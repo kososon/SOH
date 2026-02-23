@@ -3,72 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Inventaris & Pesanan</title>
+    <title>Sistem Manajemen Stok & Pesanan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        .active-tab { border-left: 4px solid #3b82f6; background-color: #1e293b; }
+    </style>
 </head>
-<body class="bg-gray-100 flex h-screen">
+<body class="bg-gray-50 flex h-screen font-sans">
 
-    <nav class="w-64 bg-slate-800 text-white flex flex-col p-4 shadow-lg">
-        <h1 class="text-2xl font-bold mb-8">Dashboard</h1>
-        <button onclick="showPage('home')" class="py-2 px-4 hover:bg-slate-700 rounded mb-2 text-left">🏠 Home</button>
-        <button onclick="showPage('pesanan')" class="py-2 px-4 hover:bg-slate-700 rounded mb-2 text-left">📝 Pesanan</button>
-        <div class="mt-auto">
-            <p id="userStatus" class="text-xs text-slate-400"></p>
-            <button onclick="logout()" class="text-red-400 text-sm mt-2">Logout</button>
+    <nav class="w-64 bg-slate-900 text-white flex flex-col p-5 shadow-xl">
+        <div class="mb-10">
+            <h1 class="text-xl font-bold tracking-widest text-blue-400">GEMINI LOGISTIC</h1>
+            <p class="text-xs text-slate-400">Pekanbaru, Riau</p>
+        </div>
+        
+        <div class="space-y-2">
+            <button onclick="showPage('home')" id="btn-home" class="w-full py-3 px-4 rounded text-left hover:bg-slate-800 transition active-tab">🏠 Home (Stok)</button>
+            <button onclick="showPage('pesanan')" id="btn-pesanan" class="w-full py-3 px-4 rounded text-left hover:bg-slate-800 transition">📝 Buat Pesanan</button>
+        </div>
+
+        <div class="mt-auto pt-5 border-t border-slate-700">
+            <p id="userStatus" class="text-sm font-medium text-green-400"></p>
+            <button onclick="location.reload()" class="text-xs text-red-400 hover:underline mt-2">Log Out / Ganti User</button>
         </div>
     </nav>
 
-    <main class="flex-1 overflow-y-auto p-8">
+    <main class="flex-1 flex flex-col overflow-hidden">
         
-        <div id="loginPage" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md mt-20">
-            <h2 class="text-xl font-bold mb-4 text-center">Login Sistem</h2>
-            <input type="password" id="passInput" placeholder="Masukkan Password" class="w-full p-2 border rounded mb-4 focus:ring-2 focus:ring-blue-500">
-            <button onclick="login()" class="w-full bg-blue-600 text-white py-2 rounded font-bold">Masuk</button>
+        <div id="loginPage" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center">
+            <div class="bg-white p-8 rounded-2xl shadow-2xl w-96 text-center">
+                <h2 class="text-2xl font-bold mb-6 text-slate-800">Login User</h2>
+                <input type="password" id="passInput" placeholder="Masukkan Password..." class="w-full p-3 border-2 rounded-lg mb-4 focus:border-blue-500 outline-none text-center text-lg">
+                <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition">MASUK</button>
+            </div>
         </div>
 
-        <div id="homePage" class="hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Daftar Barang</h2>
-                <div id="adminTools" class="hidden space-x-2">
-                    <input type="text" id="ghToken" placeholder="GitHub Token" class="p-2 border rounded text-sm">
-                    <input type="file" id="importExcel" class="text-sm">
-                </div>
+        <header class="bg-white border-b p-4 flex justify-between items-center">
+            <input type="text" id="globalSearch" onkeyup="filterTable()" placeholder="Cari merk, nama, atau ukuran..." class="w-1/2 p-2 bg-gray-100 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+            
+            <div id="adminTools" class="hidden flex items-center gap-2">
+                <input type="password" id="ghToken" placeholder="GitHub Token" class="text-xs p-2 border rounded">
+                <label class="bg-blue-600 text-white px-3 py-2 rounded text-xs cursor-pointer hover:bg-blue-700">
+                    Import Excel
+                    <input type="file" id="importExcel" class="hidden" accept=".xlsx, .xls">
+                </label>
             </div>
+        </header>
 
-            <input type="text" id="globalSearch" onkeyup="filterTable()" placeholder="Cari merk, nama, ukuran..." class="w-full p-3 border rounded-lg mb-4 shadow-sm">
-
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-gray-200">
-                        <tr id="tableHeader"></tr>
+        <div id="homePage" class="p-6 overflow-auto">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50 border-b">
+                        <tr id="tableHeader" class="text-gray-600 text-sm uppercase"></tr>
                     </thead>
-                    <tbody id="tableBody"></tbody>
+                    <tbody id="tableBody" class="text-gray-700 divide-y">
+                        </tbody>
                 </table>
             </div>
         </div>
 
-        <div id="pesananPage" class="hidden">
-             <h2 class="text-2xl font-bold mb-6">Buat Pesanan Baru</h2>
-             <div class="bg-white p-6 rounded-lg shadow-md max-w-2xl">
-                <input type="text" id="searchCustomer" list="customerList" placeholder="Cari Nama Toko / Customer..." class="w-full p-2 border rounded mb-4">
-                <datalist id="customerList"></datalist>
-
-                <div id="orderItems" class="space-y-4 mb-4">
-                    </div>
+        <div id="pesananPage" class="hidden p-6 overflow-auto">
+            <div class="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 text-slate-800 border-b pb-4">Formulir Pesanan</h2>
                 
-                <button onclick="addItemRow()" class="text-blue-600 font-bold">+ Tambah Barang</button>
-                
-                <div class="border-t mt-4 pt-4">
-                    <p class="font-bold">Total QTY: <span id="totalQtyDisplay">0</span></p>
-                    <button onclick="generateOrder()" class="mt-4 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Generate & Copy</button>
+                <div class="mb-6">
+                    <label class="block text-sm font-bold mb-2">Pilih Toko / Customer:</label>
+                    <input type="text" id="searchCustomer" list="customerList" placeholder="Ketik nama toko..." class="w-full p-3 border rounded-lg bg-gray-50">
+                    <datalist id="customerList"></datalist>
                 </div>
-             </div>
+
+                <div class="space-y-4" id="orderItems">
+                    </div>
+
+                <button onclick="addItemRow()" class="mt-4 text-blue-600 font-bold hover:text-blue-800 transition">+ Tambah Barang Pesanan</button>
+
+                <div class="mt-8 bg-slate-50 p-4 rounded-lg flex justify-between items-center">
+                    <p class="text-lg font-bold">Total QTY: <span id="totalQtyDisplay" class="text-blue-600">0</span></p>
+                    <button onclick="generateOrder()" class="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 shadow-lg transition">GENERATE & COPY</button>
+                </div>
+            </div>
         </div>
+
     </main>
 
     <script>
-        // -- DATA & LOGIC --
         let currentUser = null;
         let masterData = { keramik: [], eksternal: [], customer: [] };
 
@@ -78,25 +97,34 @@
             'change123': { role: 'user_eks', access: ['mortindo', 'drymix', 'aer', 'air', 'ava', 'pacific paint'] }
         };
 
+        // --- AUTH ---
         function login() {
             const pass = document.getElementById('passInput').value.toLowerCase();
             if (USERS[pass]) {
                 currentUser = USERS[pass];
                 document.getElementById('loginPage').classList.add('hidden');
-                document.getElementById('homePage').classList.remove('hidden');
-                document.getElementById('userStatus').innerText = "Logged in as: " + currentUser.role;
+                document.getElementById('userStatus').innerText = `Role: ${currentUser.role.toUpperCase()}`;
                 if(currentUser.role === 'admin') document.getElementById('adminTools').classList.remove('hidden');
-                renderTable();
+                loadDataFromGitHub(); // Load data saat login
             } else {
                 alert("Password Salah!");
             }
         }
 
-        // Fungsi Filter Akses Data
+        // --- DATA HANDLER ---
+        async function loadDataFromGitHub() {
+            try {
+                // Ganti dengan URL data.json mentah Anda jika sudah diupload
+                // const res = await fetch('https://raw.githubusercontent.com/USER/REPO/main/data.json');
+                // masterData = await res.json();
+                renderTable();
+                updateCustomerDatalist();
+            } catch (e) { console.log("Data belum tersedia di server."); }
+        }
+
         function getFilteredData() {
             let combined = [...masterData.keramik, ...masterData.eksternal];
             if (currentUser.role === 'admin') return combined;
-            
             return combined.filter(item => 
                 currentUser.access.some(acc => item.Merk?.toLowerCase().includes(acc.toLowerCase()))
             );
@@ -104,92 +132,147 @@
 
         function renderTable() {
             const data = getFilteredData();
-            const body = document.getElementById('tableBody');
             const head = document.getElementById('tableHeader');
-            
+            const body = document.getElementById('tableBody');
             body.innerHTML = "";
-            if(data.length === 0) return;
 
-            // Generate Header
-            const headers = Object.keys(data[0]);
-            head.innerHTML = headers.map(h => `<th class="p-3 border">${h}</th>`).join('');
+            if(data.length === 0) {
+                body.innerHTML = "<tr><td colspan='5' class='p-10 text-center text-gray-400'>Tidak ada data. Silakan import file Excel (Admin).</td></tr>";
+                return;
+            }
 
-            // Generate Rows
-            data.forEach(row => {
+            const headers = ["Nama", "Lot", "Merk", "Ukuran", "QTY"];
+            head.innerHTML = headers.map(h => `<th class="p-4">${h}</th>`).join('');
+
+            data.forEach(item => {
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50 border-b";
-                tr.innerHTML = headers.map(h => `<td class="p-3 border">${row[h] || ''}</td>`).join('');
+                tr.className = "hover:bg-blue-50 transition border-b";
+                tr.innerHTML = headers.map(h => `<td class="p-4 font-medium">${item[h] || '-'}</td>`).join('');
                 body.appendChild(tr);
             });
+        }
+
+        // --- EXCEL IMPORT LOGIC (FIXED) ---
+        document.getElementById('importExcel').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(evt) {
+                const workbook = XLSX.read(evt.target.result, { type: 'binary' });
+                
+                // FIX: Memasukkan ke variabel sesuai NAMA SHEET di Excel
+                if(workbook.Sheets["Data_Keramik"]) 
+                    masterData.keramik = XLSX.utils.sheet_to_json(workbook.Sheets["Data_Keramik"]);
+                
+                if(workbook.Sheets["Data_Eksternal"]) 
+                    masterData.eksternal = XLSX.utils.sheet_to_json(workbook.Sheets["Data_Eksternal"]);
+                
+                if(workbook.Sheets["Data_Customer"]) 
+                    masterData.customer = XLSX.utils.sheet_to_json(workbook.Sheets["Data_Customer"]);
+
+                renderTable();
+                updateCustomerDatalist();
+                saveToGithub(); // Simpan otomatis setelah import
+            };
+            reader.readAsBinaryString(file);
+        });
+
+        // --- GITHUB API UPDATE ---
+        async function saveToGithub() {
+            const token = document.getElementById('ghToken').value;
+            if(!token) { alert("Admin: Masukkan GitHub Token untuk Update Otomatis!"); return; }
+
+            const USER = "USERNAME_ANDA"; // GANTI
+            const REPO = "NAMA_REPO_ANDA"; // GANTI
+            const PATH = "data.json";
+
+            try {
+                const getUrl = `https://api.github.com/repos/${USER}/${REPO}/contents/${PATH}`;
+                const getRes = await fetch(getUrl, { headers: { Authorization: `token ${token}` } });
+                const fileData = await getRes.json();
+                
+                const content = btoa(JSON.stringify(masterData, null, 2));
+
+                const putRes = await fetch(getUrl, {
+                    method: "PUT",
+                    headers: { Authorization: `token ${token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        message: "Auto-update data stok",
+                        content: content,
+                        sha: fileData.sha
+                    })
+                });
+
+                if(putRes.ok) alert("Data website berhasil di-update secara Live!");
+            } catch (err) {
+                alert("Gagal update ke GitHub. Cek Token/Repo.");
+            }
+        }
+
+        // --- PESANAN LOGIC ---
+        function updateCustomerDatalist() {
+            const list = document.getElementById('customerList');
+            list.innerHTML = masterData.customer.map(c => 
+                `<option value="${c['nama toko']} - ${c['nama customer']} (ID: ${c['id']})">`
+            ).join('');
+        }
+
+        function addItemRow() {
+            const container = document.getElementById('orderItems');
+            const row = document.createElement('div');
+            row.className = "order-item flex gap-2 items-center bg-gray-50 p-3 rounded-lg border";
+            row.innerHTML = `
+                <input type="text" placeholder="Nama Barang" class="item-name flex-1 p-2 border rounded">
+                <input type="text" placeholder="Lot" class="item-lot w-24 p-2 border rounded">
+                <input type="number" oninput="calcTotal()" placeholder="QTY" class="item-qty w-20 p-2 border rounded">
+                <input type="text" placeholder="Harga" class="item-price w-32 p-2 border rounded">
+                <button onclick="this.parentElement.remove(); calcTotal();" class="text-red-500 font-bold px-2">X</button>
+            `;
+            container.appendChild(row);
+        }
+
+        function calcTotal() {
+            let total = 0;
+            document.querySelectorAll('.item-qty').forEach(input => total += (parseInt(input.value) || 0));
+            document.getElementById('totalQtyDisplay').innerText = total;
+        }
+
+        function generateOrder() {
+            const toko = document.getElementById('searchCustomer').value;
+            let itemsText = "";
+            let totalQty = 0;
+
+            document.querySelectorAll('.order-item').forEach(row => {
+                const name = row.querySelector('.item-name').value;
+                const lot = row.querySelector('.item-lot').value;
+                const qty = row.querySelector('.item-qty').value;
+                const price = row.querySelector('.item-price').value;
+
+                if(name) {
+                    itemsText += `${name} , ${lot} , ${qty} , ${price}\n`;
+                    totalQty += parseInt(qty) || 0;
+                }
+            });
+
+            const waktu = new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
+            const result = `Berikut pesanan toko ${toko}\n${itemsText}Dengan total QTY ${totalQty}\nTerimakasih\nPekanbaru, ${waktu}`;
+            
+            navigator.clipboard.writeText(result);
+            alert("Pesanan berhasil dibuat & dicopy ke clipboard!");
+        }
+
+        function showPage(page) {
+            document.getElementById('homePage').classList.toggle('hidden', page !== 'home');
+            document.getElementById('pesananPage').classList.toggle('hidden', page !== 'pesanan');
+            document.getElementById('btn-home').classList.toggle('active-tab', page === 'home');
+            document.getElementById('btn-pesanan').classList.toggle('active-tab', page === 'pesanan');
         }
 
         function filterTable() {
             const val = document.getElementById('globalSearch').value.toLowerCase();
             const rows = document.querySelectorAll('#tableBody tr');
-            rows.forEach(row => {
-                row.style.display = row.innerText.toLowerCase().includes(val) ? '' : 'none';
-            });
+            rows.forEach(row => row.style.display = row.innerText.toLowerCase().includes(val) ? '' : 'none');
         }
-
-        function showPage(page) {
-            if(!currentUser) return;
-            document.getElementById('homePage').classList.toggle('hidden', page !== 'home');
-            document.getElementById('pesananPage').classList.toggle('hidden', page !== 'pesanan');
-        }
-
-        // Fitur Generate Pesanan (Simplified)
-        function generateOrder() {
-            const store = document.getElementById('searchCustomer').value;
-            const items = document.querySelectorAll('.order-item');
-            let itemText = "";
-            let total = 0;
-
-            items.forEach(row => {
-                const name = row.querySelector('.item-select').value;
-                const qty = parseInt(row.querySelector('.item-qty').value) || 0;
-                const price = row.querySelector('.item-price').value;
-                if(name) {
-                    itemText += `${name}, QTY: ${qty}, Harga: ${price}\n`;
-                    total += qty;
-                }
-            });
-
-            const date = new Date().toLocaleString('id-ID');
-            const finalString = `Berikut pesanan toko ${store}\n${itemText}Dengan total QTY ${total}\nTerimakasih\nPekanbaru, ${date}`;
-            
-            navigator.clipboard.writeText(finalString);
-            alert("Pesanan disalin ke clipboard!");
-        }
-
-        // --- GITHUB API INTEGRATION (FOR ADMIN) ---
-        // Anda memerlukan Personal Access Token GitHub untuk ini
-        async function updateGitHubData(newData) {
-            const token = document.getElementById('ghToken').value;
-            const repo = "USERNAME/REPO_NAME"; // Ganti dengan repo Anda
-            const path = "data.json";
-            
-            // Logika: Ambil SHA file lama -> Update dengan konten baru (Base64)
-            // Fitur ini memerlukan integrasi fetch API ke https://api.github.com/repos/...
-            alert("Sistem akan mengirim data ke GitHub API...");
-        }
-
-        // Logika Import Excel menggunakan SheetJS
-        document.getElementById('importExcel').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = (evt) => {
-                const workbook = XLSX.read(evt.target.result, { type: 'binary' });
-                const firstSheet = workbook.SheetNames[0];
-                const data = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
-                
-                // Di sini Anda bisa memproses data berdasarkan header yang diminta
-                masterData.keramik = data; 
-                renderTable();
-                // Panggil updateGitHubData(data) di sini
-            };
-            reader.readAsBinaryString(file);
-        });
-
     </script>
 </body>
 </html>
