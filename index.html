@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistem Manajemen Gudang</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* CSS Sederhana untuk Layout Sidebar */
+        body { display: flex; font-family: sans-serif; margin: 0; }
+        #sidebar { width: 200px; height: 100vh; background: #333; color: white; padding: 20px; position: fixed; }
+        #main-content { margin-left: 240px; padding: 20px; width: 100%; }
+        .hidden { display: none; }
+        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .modal { position: fixed; background: rgba(0,0,0,0.5); top:0; left:0; width:100%; height:100%; display:none; justify-content:center; align-items:center; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 500px; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar" class="hidden">
+        <h3>Menu</h3>
+        <button onclick="showPage('home')">Home</button><br><br>
+        <button onclick="showPage('pesanan')">Pesanan</button>
+        <hr>
+        <div id="admin-tools" class="hidden">
+            <h4>Admin Only</h4>
+            <input type="file" id="importExcel" accept=".xlsx, .xls">
+            <button onclick="handleImport()">Upload ke GitHub</button>
+        </div>
+        <br>
+        <button onclick="logout()">Logout</button>
+    </div>
+
+    <div id="main-content">
+        <div id="login-section">
+            <h2>Login</h2>
+            <input type="text" id="username" placeholder="Username"><br>
+            <input type="password" id="password" placeholder="Password"><br>
+            <button onclick="login()">Masuk</button>
+        </div>
+
+        <div id="home-page" class="hidden">
+            <h2>Daftar Barang</h2>
+            <input type="text" id="globalSearch" placeholder="Cari merk, nama, atau ukuran..." onkeyup="filterTable()">
+            <table id="dataTable">
+                <thead>
+                    <tr id="tableHeader"></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <h3>Buat Pesanan</h3>
+            <input type="text" id="searchCustomer" placeholder="Cari Toko/Customer...">
+            <div id="itemList"></div>
+            <hr>
+            <button onclick="generateOrder()">Generate & Copy</button>
+            <button onclick="closeModal()">Batal</button>
+        </div>
+    </div>
+
+    <script>
+        // DATA & KONFIGURASI
+        let currentUser = null;
+        let masterData = []; // Akan diisi dari GitHub JSON
+        const GITHUB_TOKEN = "YOUR_GITHUB_TOKEN"; // Hati-hati: Sebaiknya gunakan backend proxy jika publik
+        const REPO_OWNER = "username_anda";
+        const REPO_NAME = "nama_repo";
+
+        function login() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value.toLowerCase();
+
+            const users = {
+                'admin': { pass: 'mnu123', role: 'admin' },
+                'user_keramik': { pass: 'dare123', role: 'keramik', filter: ['asia tile', 'platinum', 'infiniti', 'titanium'] },
+                'user_eks': { pass: 'change123', role: 'eks', filter: ['mortindo', 'drymix', 'aer', 'air', 'ava', 'pacific paint'] }
+            };
+
+            if (users[user] && users[user].pass === pass) {
+                currentUser = users[user];
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('sidebar').classList.remove('hidden');
+                if(currentUser.role === 'admin') document.getElementById('admin-tools').classList.remove('hidden');
+                showPage('home');
+                loadData();
+            } else {
+                alert("Login Gagal!");
+            }
+        }
+
+        // FUNGSI GITHUB API UNTUK UPDATE DATA
+        async function updateGitHubData(jsonData, fileName) {
+            const path = `data/${fileName}.json`;
+            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`;
+            
+            // Ambil SHA file lama jika ada (untuk update)
+            let sha = "";
+            try {
+                const res = await fetch(url);
+                const oldData = await res.json();
+                sha = oldData.sha;
+            } catch (e) {}
+
+            const content = btoa(JSON.stringify(jsonData));
+            const body = {
+                message: `Update data ${fileName} via Web Admin`,
+                content: content,
+                sha: sha
+            };
+
+            const response = await fetch(url, {
+                method: "PUT",
+                headers: { "Authorization": `token ${GITHUB_TOKEN}`, "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+
+            if(response.ok) alert("Data berhasil diupdate ke GitHub!");
+        }
+
+        function generateOrder() {
+            const now = new Date();
+            const waktu = now.toLocaleString('id-ID');
+            let text = `Berikut pesanan toko ${document.getElementById('searchCustomer').value}\n`;
+            // ... loop item yang dipilih ...
+            text += `Total QTY: ... \nTerimakasih\nPekanbaru, ${waktu}`;
+            
+            navigator.clipboard.writeText(text);
+            alert("Pesanan dicopy ke clipboard!");
+        }
+
+        function showPage(page) {
+            if(page === 'pesanan') document.getElementById('orderModal').style.display = 'flex';
+            // Logic pindah halaman lainnya...
+        }
+    </script>
+</body>
+</html>
