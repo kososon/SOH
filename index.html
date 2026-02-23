@@ -3,91 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Manajemen Stok & Pesanan</title>
+    <title>Gemini Logistic System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        .active-tab { border-left: 4px solid #3b82f6; background-color: #1e293b; }
+        .active-tab { border-left: 4px solid #3b82f6; background-color: #1e293b; color: #60a5fa; }
+        .hidden { display: none; }
     </style>
 </head>
-<body class="bg-gray-50 flex h-screen font-sans">
+<body class="bg-gray-100 flex h-screen overflow-hidden">
 
-    <nav class="w-64 bg-slate-900 text-white flex flex-col p-5 shadow-xl">
-        <div class="mb-10">
-            <h1 class="text-xl font-bold tracking-widest text-blue-400">GEMINI LOGISTIC</h1>
-            <p class="text-xs text-slate-400">Pekanbaru, Riau</p>
+    <nav class="w-64 bg-slate-900 text-white flex flex-col p-5 shadow-2xl">
+        <div class="mb-10 text-center">
+            <h1 class="text-xl font-bold text-blue-400 tracking-tighter">GEMINI LOGISTIC</h1>
+            <p class="text-[10px] text-slate-500 uppercase tracking-widest">Pekanbaru Warehouse</p>
         </div>
         
-        <div class="space-y-2">
-            <button onclick="showPage('home')" id="btn-home" class="w-full py-3 px-4 rounded text-left hover:bg-slate-800 transition active-tab">🏠 Home (Stok)</button>
+        <div class="space-y-2 flex-1">
+            <button onclick="showPage('home')" id="btn-home" class="w-full py-3 px-4 rounded text-left hover:bg-slate-800 transition active-tab">🏠 Stok Barang</button>
             <button onclick="showPage('pesanan')" id="btn-pesanan" class="w-full py-3 px-4 rounded text-left hover:bg-slate-800 transition">📝 Buat Pesanan</button>
         </div>
 
-        <div class="mt-auto pt-5 border-t border-slate-700">
-            <p id="userStatus" class="text-sm font-medium text-green-400"></p>
-            <button onclick="location.reload()" class="text-xs text-red-400 hover:underline mt-2">Log Out / Ganti User</button>
+        <div class="pt-5 border-t border-slate-700">
+            <p id="userStatus" class="text-xs font-mono text-green-400"></p>
+            <button onclick="location.reload()" class="text-xs text-red-400 mt-2 block hover:underline">Logout & Reset</button>
         </div>
     </nav>
 
     <main class="flex-1 flex flex-col overflow-hidden">
         
-        <div id="loginPage" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center">
-            <div class="bg-white p-8 rounded-2xl shadow-2xl w-96 text-center">
-                <h2 class="text-2xl font-bold mb-6 text-slate-800">Login User</h2>
-                <input type="password" id="passInput" placeholder="Masukkan Password..." class="w-full p-3 border-2 rounded-lg mb-4 focus:border-blue-500 outline-none text-center text-lg">
-                <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition">MASUK</button>
+        <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center">
+            <div class="bg-white p-8 rounded-2xl shadow-2xl w-96">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold text-slate-800">Sistem Logistik</h2>
+                    <p class="text-sm text-slate-500">Silakan masukkan password akses</p>
+                </div>
+                <input type="password" id="passInput" placeholder="Password..." class="w-full p-3 border-2 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500 outline-none text-center text-lg">
+                <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition-all shadow-lg">MASUK KE SISTEM</button>
             </div>
         </div>
 
-        <header class="bg-white border-b p-4 flex justify-between items-center">
-            <input type="text" id="globalSearch" onkeyup="filterTable()" placeholder="Cari merk, nama, atau ukuran..." class="w-1/2 p-2 bg-gray-100 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+        <header class="bg-white border-b p-4 flex justify-between items-center shadow-sm">
+            <div class="w-1/2 relative">
+                <span class="absolute left-3 top-2.5 text-gray-400">🔍</span>
+                <input type="text" id="globalSearch" onkeyup="filterTable()" placeholder="Cari merk, ukuran, atau nama barang..." class="w-full pl-10 pr-4 py-2 bg-gray-50 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+            </div>
             
-            <div id="adminTools" class="hidden flex items-center gap-2">
-                <input type="password" id="ghToken" placeholder="GitHub Token" class="text-xs p-2 border rounded">
-                <label class="bg-blue-600 text-white px-3 py-2 rounded text-xs cursor-pointer hover:bg-blue-700">
-                    Import Excel
+            <div id="adminTools" class="hidden flex items-center gap-3">
+                <input type="password" id="ghToken" placeholder="GitHub PAT Token" class="text-xs p-2 border rounded-md w-40">
+                <label class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-xs font-bold cursor-pointer transition-colors shadow-md">
+                    IMPORT DATA (EXCEL)
                     <input type="file" id="importExcel" class="hidden" accept=".xlsx, .xls">
                 </label>
             </div>
         </header>
 
-        <div id="homePage" class="p-6 overflow-auto">
+        <section id="homePage" class="p-6 overflow-y-auto">
             <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                 <table class="w-full text-left">
-                    <thead class="bg-gray-50 border-b">
-                        <tr id="tableHeader" class="text-gray-600 text-sm uppercase"></tr>
+                    <thead class="bg-slate-50 border-b">
+                        <tr id="tableHeader" class="text-slate-600 text-xs uppercase font-bold tracking-wider">
+                            </tr>
                     </thead>
-                    <tbody id="tableBody" class="text-gray-700 divide-y">
-                        </tbody>
+                    <tbody id="tableBody" class="text-slate-700 divide-y">
+                        <tr><td colspan="5" class="p-10 text-center text-gray-400 italic">Data belum dimuat. Admin harus import data excel.</td></tr>
+                    </tbody>
                 </table>
             </div>
-        </div>
+        </section>
 
-        <div id="pesananPage" class="hidden p-6 overflow-auto">
-            <div class="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-lg">
-                <h2 class="text-2xl font-bold mb-6 text-slate-800 border-b pb-4">Formulir Pesanan</h2>
+        <section id="pesananPage" class="hidden p-6 overflow-y-auto bg-gray-50">
+            <div class="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+                <div class="border-b pb-4 mb-6">
+                    <h2 class="text-2xl font-black text-slate-800">PESANAN BARU</h2>
+                </div>
                 
-                <div class="mb-6">
-                    <label class="block text-sm font-bold mb-2">Pilih Toko / Customer:</label>
-                    <input type="text" id="searchCustomer" list="customerList" placeholder="Ketik nama toko..." class="w-full p-3 border rounded-lg bg-gray-50">
+                <div class="mb-8">
+                    <label class="block text-xs font-black text-slate-500 uppercase mb-2">Pilih Toko / Customer</label>
+                    <input type="text" id="searchCustomer" list="customerList" placeholder="Ketik nama toko atau nama customer..." class="w-full p-4 border-2 rounded-xl bg-slate-50 focus:border-blue-500 outline-none transition-all font-semibold">
                     <datalist id="customerList"></datalist>
                 </div>
 
-                <div class="space-y-4" id="orderItems">
+                <div class="mb-4 flex font-bold text-xs text-slate-400 uppercase px-4">
+                    <div class="flex-1">Nama Barang / Merk</div>
+                    <div class="w-24 px-2">Lot</div>
+                    <div class="w-20 px-2 text-center">QTY</div>
+                    <div class="w-32 px-2 text-center">Harga</div>
+                    <div class="w-10"></div>
+                </div>
+
+                <div class="space-y-3" id="orderItems">
                     </div>
 
-                <button onclick="addItemRow()" class="mt-4 text-blue-600 font-bold hover:text-blue-800 transition">+ Tambah Barang Pesanan</button>
+                <button onclick="addItemRow()" class="mt-6 flex items-center gap-2 text-blue-600 font-black hover:text-blue-800 transition-all uppercase text-sm">
+                    <span class="text-xl">+</span> Tambah Barang
+                </button>
 
-                <div class="mt-8 bg-slate-50 p-4 rounded-lg flex justify-between items-center">
-                    <p class="text-lg font-bold">Total QTY: <span id="totalQtyDisplay" class="text-blue-600">0</span></p>
-                    <button onclick="generateOrder()" class="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 shadow-lg transition">GENERATE & COPY</button>
+                <div class="mt-10 p-6 bg-slate-900 rounded-2xl text-white flex justify-between items-center shadow-xl">
+                    <div>
+                        <p class="text-slate-400 text-xs uppercase font-bold">Ringkasan Pesanan</p>
+                        <p class="text-2xl font-black">Total QTY: <span id="totalQtyDisplay" class="text-blue-400">0</span></p>
+                    </div>
+                    <button onclick="generateOrder()" class="bg-blue-500 hover:bg-blue-400 text-white px-10 py-4 rounded-xl font-black transition-all transform hover:scale-105 active:scale-95 shadow-lg">GENERATE & COPY</button>
                 </div>
             </div>
-        </div>
+        </section>
 
     </main>
 
     <script>
+        // CONFIG & DATA
         let currentUser = null;
         let masterData = { keramik: [], eksternal: [], customer: [] };
 
@@ -97,31 +122,25 @@
             'change123': { role: 'user_eks', access: ['mortindo', 'drymix', 'aer', 'air', 'ava', 'pacific paint'] }
         };
 
-        // --- AUTH ---
+        // 1. LOGIN SYSTEM
         function login() {
             const pass = document.getElementById('passInput').value.toLowerCase();
             if (USERS[pass]) {
                 currentUser = USERS[pass];
                 document.getElementById('loginPage').classList.add('hidden');
-                document.getElementById('userStatus').innerText = `Role: ${currentUser.role.toUpperCase()}`;
+                document.getElementById('userStatus').innerText = `USER: ${currentUser.role.toUpperCase()}`;
                 if(currentUser.role === 'admin') document.getElementById('adminTools').classList.remove('hidden');
-                loadDataFromGitHub(); // Load data saat login
+                
+                // Coba muat data dari GitHub jika Anda sudah setting (Opsional)
+                // loadFromGitHub(); 
+                renderTable();
+                updateCustomerDatalist();
             } else {
-                alert("Password Salah!");
+                alert("❌ Password Salah!");
             }
         }
 
-        // --- DATA HANDLER ---
-        async function loadDataFromGitHub() {
-            try {
-                // Ganti dengan URL data.json mentah Anda jika sudah diupload
-                // const res = await fetch('https://raw.githubusercontent.com/USER/REPO/main/data.json');
-                // masterData = await res.json();
-                renderTable();
-                updateCustomerDatalist();
-            } catch (e) { console.log("Data belum tersedia di server."); }
-        }
-
+        // 2. DATA FILTERING
         function getFilteredData() {
             let combined = [...masterData.keramik, ...masterData.eksternal];
             if (currentUser.role === 'admin') return combined;
@@ -130,29 +149,30 @@
             );
         }
 
+        // 3. RENDER TABLE (HOME)
         function renderTable() {
             const data = getFilteredData();
             const head = document.getElementById('tableHeader');
             const body = document.getElementById('tableBody');
             body.innerHTML = "";
 
+            const columns = ["Nama", "Lot", "Merk", "Ukuran", "QTY"];
+            head.innerHTML = columns.map(c => `<th class="p-4">${c}</th>`).join('');
+
             if(data.length === 0) {
-                body.innerHTML = "<tr><td colspan='5' class='p-10 text-center text-gray-400'>Tidak ada data. Silakan import file Excel (Admin).</td></tr>";
+                body.innerHTML = `<tr><td colspan="5" class="p-20 text-center text-slate-400 font-medium italic">Belum ada data tersedia.</td></tr>`;
                 return;
             }
 
-            const headers = ["Nama", "Lot", "Merk", "Ukuran", "QTY"];
-            head.innerHTML = headers.map(h => `<th class="p-4">${h}</th>`).join('');
-
             data.forEach(item => {
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-blue-50 transition border-b";
-                tr.innerHTML = headers.map(h => `<td class="p-4 font-medium">${item[h] || '-'}</td>`).join('');
+                tr.className = "hover:bg-blue-50 transition-colors border-b border-slate-100";
+                tr.innerHTML = columns.map(c => `<td class="p-4 font-semibold text-slate-700">${item[c] || '-'}</td>`).join('');
                 body.appendChild(tr);
             });
         }
 
-        // --- EXCEL IMPORT LOGIC (FIXED) ---
+        // 4. EXCEL IMPORT (MULTI-SHEET)
         document.getElementById('importExcel').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const reader = new FileReader();
@@ -160,119 +180,128 @@
             reader.onload = function(evt) {
                 const workbook = XLSX.read(evt.target.result, { type: 'binary' });
                 
-                // FIX: Memasukkan ke variabel sesuai NAMA SHEET di Excel
+                // Mapping sheet ke variabel (Case Sensitive pada Nama Sheet)
                 if(workbook.Sheets["Data_Keramik"]) 
                     masterData.keramik = XLSX.utils.sheet_to_json(workbook.Sheets["Data_Keramik"]);
-                
                 if(workbook.Sheets["Data_Eksternal"]) 
                     masterData.eksternal = XLSX.utils.sheet_to_json(workbook.Sheets["Data_Eksternal"]);
-                
                 if(workbook.Sheets["Data_Customer"]) 
                     masterData.customer = XLSX.utils.sheet_to_json(workbook.Sheets["Data_Customer"]);
 
                 renderTable();
                 updateCustomerDatalist();
-                saveToGithub(); // Simpan otomatis setelah import
+                saveToGithub(); // Simpan ke GitHub API
             };
             reader.readAsBinaryString(file);
         });
 
-        // --- GITHUB API UPDATE ---
+        // 5. PESANAN: SEARCHABLE INPUT
+        function addItemRow() {
+            const container = document.getElementById('orderItems');
+            const id = Date.now();
+            const filteredStok = getFilteredData();
+            
+            const row = document.createElement('div');
+            row.className = "order-item flex gap-2 items-center bg-white p-2 rounded-xl border-2 border-slate-100 shadow-sm";
+            row.innerHTML = `
+                <div class="flex-1">
+                    <input type="text" list="stok-${id}" onchange="autoFillLot(this)" placeholder="Cari barang..." class="item-name w-full p-3 border rounded-lg bg-white outline-none focus:border-blue-500 font-bold">
+                    <datalist id="stok-${id}">
+                        ${filteredStok.map(s => `<option value="${s.Nama}" data-lot="${s.Lot || ''}">[${s.Merk}] ${s.Nama} - ${s.Ukuran}</option>`).join('')}
+                    </datalist>
+                </div>
+                <input type="text" placeholder="Lot" class="item-lot w-24 p-3 border rounded-lg bg-slate-50 font-medium">
+                <input type="number" oninput="calcTotal()" placeholder="0" class="item-qty w-20 p-3 border rounded-lg font-black text-blue-600">
+                <input type="text" placeholder="Harga" class="item-price w-32 p-3 border rounded-lg font-bold">
+                <button onclick="this.parentElement.remove(); calcTotal();" class="w-10 text-red-400 hover:text-red-600 font-bold text-xl">×</button>
+            `;
+            container.appendChild(row);
+        }
+
+        function autoFillLot(input) {
+            const val = input.value;
+            const list = input.nextElementSibling;
+            const option = Array.from(list.options).find(o => o.value === val);
+            if(option) {
+                const row = input.closest('.order-item');
+                row.querySelector('.item-lot').value = option.getAttribute('data-lot') || '-';
+            }
+        }
+
+        function calcTotal() {
+            let total = 0;
+            document.querySelectorAll('.item-qty').forEach(i => total += (parseInt(i.value) || 0));
+            document.getElementById('totalQtyDisplay').innerText = total;
+        }
+
+        function generateOrder() {
+            const toko = document.getElementById('searchCustomer').value;
+            if(!toko) { alert("Pilih Nama Toko!"); return; }
+
+            let itemsTxt = "";
+            let total = 0;
+
+            document.querySelectorAll('.order-item').forEach(row => {
+                const n = row.querySelector('.item-name').value;
+                const l = row.querySelector('.item-lot').value;
+                const q = row.querySelector('.item-qty').value;
+                const p = row.querySelector('.item-price').value;
+                if(n && q) {
+                    itemsTxt += `${n} , ${l} , ${q} , ${p}\n`;
+                    total += parseInt(q);
+                }
+            });
+
+            const tgl = new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
+            const final = `Berikut pesanan toko ${toko}\n${itemsTxt}Dengan total QTY ${total}\nTerimakasih\nPekanbaru , ${tgl}`;
+            
+            navigator.clipboard.writeText(final);
+            alert("📋 Format pesanan telah dicopy!");
+        }
+
+        // 6. GITHUB API INTEGRATION
         async function saveToGithub() {
             const token = document.getElementById('ghToken').value;
-            if(!token) { alert("Admin: Masukkan GitHub Token untuk Update Otomatis!"); return; }
+            if(!token) return; // Silent if no token (user keramik/eks)
 
             const USER = "USERNAME_ANDA"; // GANTI
             const REPO = "NAMA_REPO_ANDA"; // GANTI
             const PATH = "data.json";
 
             try {
-                const getUrl = `https://api.github.com/repos/${USER}/${REPO}/contents/${PATH}`;
-                const getRes = await fetch(getUrl, { headers: { Authorization: `token ${token}` } });
-                const fileData = await getRes.json();
+                const url = `https://api.github.com/repos/${USER}/${REPO}/contents/${PATH}`;
+                const res = await fetch(url, { headers: { Authorization: `token ${token}` } });
+                const existingFile = await res.json();
                 
-                const content = btoa(JSON.stringify(masterData, null, 2));
+                const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
 
-                const putRes = await fetch(getUrl, {
+                await fetch(url, {
                     method: "PUT",
                     headers: { Authorization: `token ${token}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        message: "Auto-update data stok",
+                        message: "Live Update Inventory",
                         content: content,
-                        sha: fileData.sha
+                        sha: existingFile.sha
                     })
                 });
-
-                if(putRes.ok) alert("Data website berhasil di-update secara Live!");
-            } catch (err) {
-                alert("Gagal update ke GitHub. Cek Token/Repo.");
-            }
+                alert("✅ Cloud Update: Website sudah diperbarui!");
+            } catch (e) { console.error("API Error:", e); }
         }
 
-        // --- PESANAN LOGIC ---
         function updateCustomerDatalist() {
             const list = document.getElementById('customerList');
             list.innerHTML = masterData.customer.map(c => 
-                `<option value="${c['nama toko']} - ${c['nama customer']} (ID: ${c['id']})">`
+                `<option value="${c['nama toko']} (${c['nama customer']})">ID: ${c['id']}</option>`
             ).join('');
         }
 
-        function addItemRow() {
-            const container = document.getElementById('orderItems');
-            const row = document.createElement('div');
-            row.className = "order-item flex gap-2 items-center bg-gray-50 p-3 rounded-lg border";
-            row.innerHTML = `
-                <input type="text" placeholder="Nama Barang" class="item-name flex-1 p-2 border rounded">
-                <input type="text" placeholder="Lot" class="item-lot w-24 p-2 border rounded">
-                <input type="number" oninput="calcTotal()" placeholder="QTY" class="item-qty w-20 p-2 border rounded">
-                <input type="text" placeholder="Harga" class="item-price w-32 p-2 border rounded">
-                <button onclick="this.parentElement.remove(); calcTotal();" class="text-red-500 font-bold px-2">X</button>
-            `;
-            container.appendChild(row);
-        }
-
-        function calcTotal() {
-            let total = 0;
-            document.querySelectorAll('.item-qty').forEach(input => total += (parseInt(input.value) || 0));
-            document.getElementById('totalQtyDisplay').innerText = total;
-        }
-
-        function generateOrder() {
-            const toko = document.getElementById('searchCustomer').value;
-            let itemsText = "";
-            let totalQty = 0;
-
-            document.querySelectorAll('.order-item').forEach(row => {
-                const name = row.querySelector('.item-name').value;
-                const lot = row.querySelector('.item-lot').value;
-                const qty = row.querySelector('.item-qty').value;
-                const price = row.querySelector('.item-price').value;
-
-                if(name) {
-                    itemsText += `${name} , ${lot} , ${qty} , ${price}\n`;
-                    totalQty += parseInt(qty) || 0;
-                }
-            });
-
-            const waktu = new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
-            const result = `Berikut pesanan toko ${toko}\n${itemsText}Dengan total QTY ${totalQty}\nTerimakasih\nPekanbaru, ${waktu}`;
-            
-            navigator.clipboard.writeText(result);
-            alert("Pesanan berhasil dibuat & dicopy ke clipboard!");
-        }
-
-        function showPage(page) {
-            document.getElementById('homePage').classList.toggle('hidden', page !== 'home');
-            document.getElementById('pesananPage').classList.toggle('hidden', page !== 'pesanan');
-            document.getElementById('btn-home').classList.toggle('active-tab', page === 'home');
-            document.getElementById('btn-pesanan').classList.toggle('active-tab', page === 'pesanan');
+        function showPage(p) {
+            document.getElementById('homePage').classList.toggle('hidden', p !== 'home');
+            document.getElementById('pesananPage').classList.toggle('hidden', p !== 'pesanan');
+            document.getElementById('btn-home').classList.toggle('active-tab', p === 'home');
+            document.getElementById('btn-pesanan').classList.toggle('active-tab', p === 'pesanan');
         }
 
         function filterTable() {
-            const val = document.getElementById('globalSearch').value.toLowerCase();
-            const rows = document.querySelectorAll('#tableBody tr');
-            rows.forEach(row => row.style.display = row.innerText.toLowerCase().includes(val) ? '' : 'none');
-        }
-    </script>
-</body>
-</html>
+            const v = document.getElementById('globalSearch').value.toLowerCase();
+            document.querySelectorAll('#table
