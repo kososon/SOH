@@ -26,7 +26,6 @@
             </div>
             <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 focus:ring-4 focus:ring-blue-100 outline-none text-center text-xl font-bold transition-all bg-slate-50">
             <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg active:scale-95 transition-all uppercase mb-6">Login</button>
-            
             <div class="text-center">
                 <p class="text-[10px] text-slate-400 italic font-medium">Powered by Wilson V.1.0</p>
             </div>
@@ -104,7 +103,6 @@
     </nav>
 
     <script>
-        // CONFIG
         const GITHUB_TOKEN = "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";
         const REPO_OWNER = "kososon"; 
         const REPO_NAME = "SOH";   
@@ -113,13 +111,12 @@
         let currentUser = null;
         let masterData = { keramik: [], eksternal: [], customer: [] };
 
+        // Konfigurasi Login (Case Insensitive)
         const USERS = {
             'mnu123': { role: 'admin', access: 'all' },
-            'dare123': { role: 'user_keramik', access: ['asia tile', 'platinum', 'infiniti', 'titanium'] },
-            'change123': { role: 'user_eks', access: ['mortindo', 'drymix', 'aer', 'air', 'ava', 'pacific paint'] }
+            'dare123': { role: 'sales', access: 'all' } // Sales sekarang akses semua sesuai permintaan umum
         };
 
-        // LOGIN FUNCTION
         function login() {
             const pass = document.getElementById('passInput').value.toLowerCase();
             if (USERS[pass]) {
@@ -127,51 +124,57 @@
                 document.getElementById('loginPage').classList.add('hidden');
                 if(currentUser.role === 'admin') document.getElementById('adminTools').classList.remove('hidden');
                 fetchFromGithub(); 
+                
+                // OTOMATIS REFRESH SETIAP 20 DETIK (Anti-Cache aktif)
+                setInterval(() => {
+                    fetchFromGithub();
+                }, 20000);
             } else { alert("❌ Password Salah!"); }
         }
 
-        // FETCH DATA (WITH CACHE BUSTER)
         async function fetchFromGithub() {
             try {
-                // Menghindari cache GitHub dengan timestamp unik (?cb=...)
-                const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?cb=${new Date().getTime()}`;
+                // Penambahan timestamp (?t=) memaksa perangkat mengambil data terbaru dari server
+                const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?t=${new Date().getTime()}`;
                 const res = await fetch(url, { 
                     headers: { 
                         'Authorization': `token ${GITHUB_TOKEN}`,
                         'Cache-Control': 'no-cache'
                     } 
                 });
+                if (!res.ok) return;
                 const data = await res.json();
-                masterData = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-                renderTable();
-                updateCustomerDatalist();
-            } catch (e) { console.log("Gagal tarik data terbaru."); }
+                const freshData = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+                
+                // Hanya update jika ada perubahan data agar tidak flicker
+                if (JSON.stringify(freshData) !== JSON.stringify(masterData)) {
+                    masterData = freshData;
+                    renderTable();
+                    updateCustomerDatalist();
+                    console.log("🔄 Data otomatis diperbarui");
+                }
+            } catch (e) { console.log("Gagal sinkronisasi."); }
         }
 
-        // FILTER ACCESS BY BRAND
         function getFilteredData() {
-            let combined = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
-            if (currentUser.role === 'admin') return combined;
-            return combined.filter(item => currentUser.access.some(acc => item.Merk?.toLowerCase().includes(acc.toLowerCase())));
+            return [...(masterData.keramik || []), ...(masterData.eksternal || [])];
         }
 
-        // DISPLAY TABLE
         function renderTable() {
             const data = getFilteredData();
             const head = document.getElementById('tableHeader');
             const body = document.getElementById('tableBody');
             head.innerHTML = ["Nama", "Lot", "Merk", "QTY"].map(c => `<th class="p-4">${c}</th>`).join('');
             body.innerHTML = data.length ? data.map(item => `
-                <tr class="active:bg-slate-50 transition-colors">
+                <tr class="active:bg-slate-50 border-b">
                     <td class="p-4">${item.Nama || '-'}</td>
                     <td class="p-4 text-slate-500">${item.Lot || '-'}</td>
                     <td class="p-4 uppercase text-[10px]">${item.Merk || '-'}</td>
                     <td class="p-4 text-blue-600 font-black">${item.QTY || 0}</td>
                 </tr>
-            `).join('') : `<tr><td colspan="4" class="p-10 text-center italic text-slate-400">Memuat data...</td></tr>`;
+            `).join('') : `<tr><td colspan="4" class="p-10 text-center italic">Memuat data...</td></tr>`;
         }
 
-        // CURRENCY FORMATTER
         function formatRupiah(angka) {
             let number_string = angka.replace(/[^,\d]/g, '').toString(),
             split = number_string.split(','),
@@ -182,22 +185,19 @@
             return split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
         }
 
-        // ADD ORDER ITEM
         function addItemRow() {
             const container = document.getElementById('orderItems');
             const id = Date.now();
             const uniqueNames = [...new Set(getFilteredData().map(s => s.Nama))];
             const row = document.createElement('div');
-            row.className = "order-item bg-slate-50 p-4 rounded-xl border border-slate-100 relative";
+            row.className = "order-item bg-slate-50 p-4 rounded-xl border border-slate-100 relative mb-4";
             row.innerHTML = `
                 <button onclick="this.parentElement.remove(); calcTotal();" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs font-black">×</button>
                 <div class="space-y-3">
                     <input type="text" list="stok-${id}" onchange="updateLotDropdown(this)" placeholder="Pilih Motif..." class="item-name w-full p-3 rounded-lg border-2 border-white focus:border-blue-500 outline-none font-bold text-sm">
                     <datalist id="stok-${id}">${uniqueNames.map(n => `<option value="${n}">`).join('')}</datalist>
                     <div class="grid grid-cols-2 gap-2">
-                        <select class="item-lot p-3 rounded-lg border-2 border-white text-xs font-bold outline-none">
-                            <option value="">Pilih Lot</option>
-                        </select>
+                        <select class="item-lot p-3 rounded-lg border-2 border-white text-xs font-bold outline-none"><option value="">Pilih Lot</option></select>
                         <input type="number" oninput="calcTotal()" placeholder="QTY" class="item-qty p-3 rounded-lg border-2 border-white text-center font-black text-blue-600 outline-none">
                     </div>
                     <div class="relative">
@@ -226,18 +226,14 @@
             document.getElementById('totalPriceDisplay').innerText = 'Rp ' + formatRupiah(pTotal.toString());
         }
 
-        // NAVIGATION LOGIC (TRIGGER SYNC DATA)
         function showPage(p) {
             document.getElementById('homePage').classList.toggle('hidden', p !== 'home');
             document.getElementById('pesananPage').classList.toggle('hidden', p !== 'pesanan');
             document.getElementById('btn-home').classList.toggle('active-nav', p === 'home');
             document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
-            
-            // Sync data otomatis setiap pindah halaman agar update dari Admin terlihat
             if(currentUser) fetchFromGithub();
         }
 
-        // GENERATE WA TEXT
         function generateOrder() {
             const customer = document.getElementById('searchCustomer').value;
             if(!customer) return alert("Pilih Customer!");
@@ -259,7 +255,7 @@
             const jam = n.getHours().toString().padStart(2, '0') + '.' + n.getMinutes().toString().padStart(2, '0') + '.' + n.getSeconds().toString().padStart(2, '0');
             const final = `Berikut Pesanan Via WA Toko *${namaToko.toUpperCase()}*\n\nMotif / Lot / QTY / Harga\n${itemsTxt}\nTotal QTY : ${qTotal}\nJumlah : Rp. ${formatRupiah(pTotal.toString())}\n\nPekanbaru, ${tgl} ${jam}\nTerimakasih`;
             navigator.clipboard.writeText(final);
-            alert("✅ Pesanan Disalin ke Clipboard!");
+            alert("✅ Pesanan Disalin!");
         }
 
         function filterTable() {
@@ -272,13 +268,11 @@
             document.getElementById('customerList').innerHTML = masterData.customer.map(c => `<option value="${c['nama toko']} (${c['nama customer']})">`).join('');
         }
 
-        // LIVE CLOCK
         setInterval(() => {
             const n = new Date();
             document.getElementById('liveClock').innerText = n.toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/:/g, '.');
         }, 1000);
 
-        // IMPORT EXCEL LOGIC
         document.getElementById('importExcel').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const reader = new FileReader();
@@ -292,7 +286,6 @@
             reader.readAsBinaryString(file);
         });
 
-        // SAVE DATA TO CLOUD
         async function saveToGithub() {
             const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
             try {
@@ -303,10 +296,10 @@
                 await fetch(url, {
                     method: "PUT",
                     headers: { Authorization: `token ${GITHUB_TOKEN}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: "Mobile Sync Update", content: content, sha: sha || undefined })
+                    body: JSON.stringify({ message: "Update Data", content: content, sha: sha || undefined })
                 });
-                alert("✅ Cloud Updated!");
-            } catch (e) { alert("❌ Cloud Error."); }
+                alert("✅ Berhasil Update Cloud!");
+            } catch (e) { alert("❌ Gagal Simpan."); }
         }
     </script>
 </body>
