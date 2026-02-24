@@ -19,7 +19,7 @@
 <body class="bg-slate-50 flex flex-col h-screen overflow-hidden text-slate-900">
 
     <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-slate-200">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-sm border border-slate-200">
             <div class="text-center mb-6">
                 <h2 class="text-4xl font-black text-slate-900 tracking-tighter">SOH</h2>
                 <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mt-1">Mobile Access</p>
@@ -35,11 +35,16 @@
     <header class="bg-white border-b p-4 shadow-sm z-10">
         <div class="flex items-center justify-between mb-3">
             <h1 class="text-2xl font-black text-blue-600 tracking-tighter">SOH</h1>
-            <div id="adminTools" class="hidden">
-                <label class="bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-black cursor-pointer uppercase">
-                    Import
-                    <input type="file" id="importExcel" class="hidden" accept=".xlsx, .xls">
-                </label>
+            <div class="flex items-center gap-2">
+                <div id="adminTools" class="hidden">
+                    <label class="bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-black cursor-pointer uppercase">
+                        Import
+                        <input type="file" id="importExcel" class="hidden" accept=".xlsx, .xls">
+                    </label>
+                </div>
+                <button onclick="logout()" id="btnLogout" class="hidden bg-red-50 text-red-600 px-3 py-2 rounded-lg text-[10px] font-black uppercase border border-red-100">
+                    Logout
+                </button>
             </div>
         </div>
         <div class="relative">
@@ -110,11 +115,11 @@
 
         let currentUser = null;
         let masterData = { keramik: [], eksternal: [], customer: [] };
+        let refreshInterval = null;
 
-        // Konfigurasi Login (Hanya Admin & Sales)
         const USERS = {
-            'mnu123': { role: 'admin', access: 'all' },
-            'dare123': { role: 'sales', access: 'all' }
+            'mnu123': { role: 'admin' },
+            'dare123': { role: 'sales' }
         };
 
         function login() {
@@ -122,46 +127,51 @@
             if (USERS[pass]) {
                 currentUser = USERS[pass];
                 document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('btnLogout').classList.remove('hidden'); // Munculkan tombol logout
+                
                 if(currentUser.role === 'admin') document.getElementById('adminTools').classList.remove('hidden');
                 
-                fetchFromGithub(); // Ambil data awal
+                fetchFromGithub(true); 
                 
-                // OTOMATIS SYNC (Setiap 15 Detik)
-                setInterval(() => {
-                    fetchFromGithub();
-                }, 15000);
+                // Mulai interval auto-refresh
+                refreshInterval = setInterval(() => fetchFromGithub(false), 15000);
             } else { alert("❌ Password Salah!"); }
         }
 
-        async function fetchFromGithub() {
-            try {
-                // TAHAP 1: Ambil info commit terbaru (Ini kunci agar HP Sales terpaksa update)
-                const commitUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits?path=${DATA_FILE}&per_page=1&t=${new Date().getTime()}`;
-                const commitRes = await fetch(commitUrl, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
-                const commitData = await commitRes.json();
-                const latestSha = commitData[0].sha;
+        function logout() {
+            if(confirm("Apakah Anda ingin logout?")) {
+                currentUser = null;
+                clearInterval(refreshInterval); // Hentikan refresh otomatis
+                document.getElementById('loginPage').classList.remove('hidden');
+                document.getElementById('btnLogout').classList.add('hidden');
+                document.getElementById('adminTools').classList.add('hidden');
+                document.getElementById('passInput').value = "";
+                // Reset ke halaman home stok
+                showPage('home');
+            }
+        }
 
-                // TAHAP 2: Ambil konten file berdasarkan SHA terbaru
-                const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${latestSha}`;
-                const res = await fetch(url, { 
-                    headers: { 
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Cache-Control': 'no-cache, no-store'
-                    } 
+        async function fetchFromGithub(forceRender = false) {
+            if (!currentUser) return; // Jangan fetch jika sudah logout
+            try {
+                const rawUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/${DATA_FILE}?nocache=${new Date().getTime()}`;
+                const res = await fetch(rawUrl, { 
+                    method: 'GET',
+                    headers: { 'Cache-Control': 'no-cache' }
                 });
 
-                if (!res.ok) return;
-                const data = await res.json();
-                const freshData = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-                
-                // Update hanya jika data benar-benar berubah
-                if (JSON.stringify(freshData) !== JSON.stringify(masterData)) {
-                    masterData = freshData;
-                    renderTable();
-                    updateCustomerDatalist();
-                    console.log("🔄 Data Tersinkronisasi!");
+                if (res.ok) {
+                    const freshData = await res.json();
+                    const dataChanged = JSON.stringify(freshData) !== JSON.stringify(masterData);
+                    
+                    if (dataChanged || forceRender) {
+                        masterData = freshData;
+                        renderTable();
+                        updateCustomerDatalist();
+                        console.log("✅ Data sinkron!");
+                    }
                 }
-            } catch (e) { console.log("Sedang menyelaraskan..."); }
+            } catch (e) { console.log("Mencoba sinkronisasi..."); }
         }
 
         function getFilteredData() {
@@ -180,11 +190,11 @@
                     <td class="p-4 uppercase text-[10px]">${item.Merk || '-'}</td>
                     <td class="p-4 text-blue-600 font-black">${item.QTY || 0}</td>
                 </tr>
-            `).join('') : `<tr><td colspan="4" class="p-10 text-center italic">Memuat data terbaru...</td></tr>`;
+            `).join('') : `<tr><td colspan="4" class="p-10 text-center italic text-slate-400">Belum ada data...</td></tr>`;
         }
 
         function formatRupiah(angka) {
-            let number_string = angka.replace(/[^,\d]/g, '').toString(),
+            let number_string = angka.toString().replace(/[^,\d]/g, ''),
             split = number_string.split(','),
             sisa = split[0].length % 3,
             rupiah = split[0].substr(0, sisa),
@@ -239,14 +249,14 @@
             document.getElementById('pesananPage').classList.toggle('hidden', p !== 'pesanan');
             document.getElementById('btn-home').classList.toggle('active-nav', p === 'home');
             document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
-            if(currentUser) fetchFromGithub(); // Langsung sync saat pindah menu
+            if(currentUser) fetchFromGithub(true); 
         }
 
         function generateOrder() {
             const customer = document.getElementById('searchCustomer').value;
             if(!customer) return alert("Pilih Customer!");
             const namaToko = customer.split('(')[0].trim();
-            let itemsTxt = "", qTotal = 0, pTotal = 0;
+            let itemsTxt = ""; let qTotal = 0; let pTotal = 0;
             document.querySelectorAll('.order-item').forEach(row => {
                 const n = row.querySelector('.item-name').value;
                 const l = row.querySelector('.item-lot').value;
@@ -278,7 +288,8 @@
 
         setInterval(() => {
             const n = new Date();
-            document.getElementById('liveClock').innerText = n.toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/:/g, '.');
+            const clockEl = document.getElementById('liveClock');
+            if(clockEl) clockEl.innerText = n.toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/:/g, '.');
         }, 1000);
 
         document.getElementById('importExcel').addEventListener('change', function(e) {
@@ -304,9 +315,9 @@
                 await fetch(url, {
                     method: "PUT",
                     headers: { Authorization: `token ${GITHUB_TOKEN}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: "Update SOH", content: content, sha: sha || undefined })
+                    body: JSON.stringify({ message: "Update Data", content: content, sha: sha || undefined })
                 });
-                alert("✅ Cloud Berhasil Diupdate!");
+                alert("✅ Cloud Updated!");
             } catch (e) { alert("❌ Gagal Simpan."); }
         }
     </script>
