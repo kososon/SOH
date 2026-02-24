@@ -34,10 +34,13 @@
         <div class="flex items-center justify-between mb-3">
             <h1 class="text-2xl font-black text-blue-600 tracking-tighter">SOH</h1>
             <div id="adminTools" class="hidden">
-                <label class="bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-black cursor-pointer uppercase">
-                    Import
-                    <input type="file" id="importExcel" class="hidden" accept=".xlsx, .xls">
-                </label>
+                <div class="flex items-center gap-2">
+                    <span class="text-[8px] font-black text-green-500 animate-pulse">LIVE SINKRON</span>
+                    <label class="bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-black cursor-pointer uppercase">
+                        Import
+                        <input type="file" id="importExcel" class="hidden" accept=".xlsx, .xls">
+                    </label>
+                </div>
             </div>
         </div>
         <div class="relative">
@@ -47,17 +50,14 @@
     </header>
 
     <main class="flex-1 overflow-y-auto pb-24">
-        
         <section id="homePage" class="p-4">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="overflow-x-auto custom-scroll">
                     <table class="w-full text-left text-xs">
                         <thead class="bg-slate-50 border-b">
-                            <tr id="tableHeader" class="text-slate-500 font-black uppercase tracking-tighter">
-                                </tr>
+                            <tr id="tableHeader" class="text-slate-500 font-black uppercase tracking-tighter"></tr>
                         </thead>
-                        <tbody id="tableBody" class="divide-y divide-slate-100 font-bold text-slate-700">
-                            </tbody>
+                        <tbody id="tableBody" class="divide-y divide-slate-100 font-bold text-slate-700"></tbody>
                     </table>
                 </div>
             </div>
@@ -71,8 +71,7 @@
                     <datalist id="customerList"></datalist>
                 </div>
 
-                <div id="orderItems" class="space-y-4">
-                    </div>
+                <div id="orderItems" class="space-y-4"></div>
 
                 <button onclick="addItemRow()" class="mt-6 flex items-center gap-2 text-blue-600 font-black p-3 rounded-xl border-2 border-dashed border-blue-200 w-full justify-center text-xs uppercase">
                     + Tambah Item
@@ -127,21 +126,27 @@
             if (USERS[pass]) {
                 currentUser = USERS[pass];
                 document.getElementById('loginPage').classList.add('hidden');
-                document.getElementById('userStatus').innerText = `ACCESS: ${currentUser.role.toUpperCase()}`;
                 if(currentUser.role === 'admin') document.getElementById('adminTools').classList.remove('hidden');
                 fetchFromGithub();
+                
+                // --- UPDATE 10 DETIK ---
+                // Menjalankan refresh otomatis hanya jika user sudah login
+                setInterval(() => {
+                    fetchFromGithub();
+                }, 10000); 
             } else { alert("❌ Password Salah!"); }
         }
 
         async function fetchFromGithub() {
             try {
-                const url = `https://api.github.com/repos/${kososon}/${SOH}/contents/${DATA_FILE}`;
+                // Perbaikan variabel pemanggil URL
+                const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
                 const res = await fetch(url, { headers: { Authorization: `token ${GITHUB_TOKEN}` } });
                 const data = await res.json();
                 masterData = JSON.parse(decodeURIComponent(escape(atob(data.content))));
                 renderTable();
                 updateCustomerDatalist();
-            } catch (e) { console.log("Fetch failed."); }
+            } catch (e) { console.log("Refresh gagal atau data belum tersedia."); }
         }
 
         function getFilteredData() {
@@ -163,7 +168,7 @@
                     <td class="p-4 uppercase text-[10px]">${item.Merk || '-'}</td>
                     <td class="p-4 text-blue-600 font-black">${item.QTY || 0}</td>
                 </tr>
-            `).join('') : `<tr><td colspan="4" class="p-10 text-center italic">No data.</td></tr>`;
+            `).join('') : `<tr><td colspan="4" class="p-10 text-center italic text-slate-400 font-normal">Belum ada data...</td></tr>`;
         }
 
         function formatRupiah(angka) {
@@ -188,14 +193,12 @@
                 <div class="space-y-3">
                     <input type="text" list="stok-${id}" onchange="updateLotDropdown(this)" placeholder="Pilih Motif..." class="item-name w-full p-3 rounded-lg border-2 border-white focus:border-blue-500 outline-none font-bold text-sm">
                     <datalist id="stok-${id}">${uniqueNames.map(n => `<option value="${n}">`).join('')}</datalist>
-                    
                     <div class="grid grid-cols-2 gap-2">
                         <select class="item-lot p-3 rounded-lg border-2 border-white text-xs font-bold outline-none">
                             <option value="">Pilih Lot</option>
                         </select>
                         <input type="number" oninput="calcTotal()" placeholder="QTY" class="item-qty p-3 rounded-lg border-2 border-white text-center font-black text-blue-600 outline-none">
                     </div>
-                    
                     <div class="relative">
                         <span class="absolute left-3 top-3 text-[10px] font-black text-slate-400">Rp</span>
                         <input type="text" oninput="this.value = formatRupiah(this.value); calcTotal();" placeholder="Harga" class="item-price w-full pl-8 p-3 rounded-lg border-2 border-white font-bold text-sm outline-none">
@@ -226,10 +229,8 @@
         function generateOrder() {
             const customer = document.getElementById('searchCustomer').value;
             if(!customer) return alert("Pilih Customer!");
-            
             const namaToko = customer.split('(')[0].trim();
             let itemsTxt = "", qTotal = 0, pTotal = 0;
-
             document.querySelectorAll('.order-item').forEach(row => {
                 const n = row.querySelector('.item-name').value;
                 const l = row.querySelector('.item-lot').value;
@@ -241,13 +242,10 @@
                     qTotal += q; pTotal += (q * pVal);
                 }
             });
-
             const n = new Date();
             const tgl = n.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
             const jam = n.getHours().toString().padStart(2, '0') + '.' + n.getMinutes().toString().padStart(2, '0') + '.' + n.getSeconds().toString().padStart(2, '0');
-            
             const final = `Berikut Pesanan Via WA Toko *${namaToko.toUpperCase()}*\n\nMotif / Lot / QTY / Harga\n${itemsTxt}\nTotal QTY : ${qTotal}\nJumlah : Rp. ${formatRupiah(pTotal.toString())}\n\nPekanbaru, ${tgl} ${jam}\nTerimakasih`;
-            
             navigator.clipboard.writeText(final);
             alert("✅ Pesanan Disalin ke Clipboard!");
         }
@@ -274,7 +272,6 @@
             document.getElementById('liveClock').innerText = n.toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/:/g, '.');
         }, 1000);
 
-        // Github Sync (Sama dengan sebelumnya)
         document.getElementById('importExcel').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const reader = new FileReader();
