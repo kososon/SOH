@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SOH Mobile</title>
+    <title>SOH Mobile By Wilson</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -12,7 +12,6 @@
         .active-nav { color: #3b82f6; border-top: 3px solid #3b82f6; }
         .hidden { display: none; }
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        /* Mobile Scrollbar */
         .custom-scroll::-webkit-scrollbar { height: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
@@ -34,13 +33,10 @@
         <div class="flex items-center justify-between mb-3">
             <h1 class="text-2xl font-black text-blue-600 tracking-tighter">SOH</h1>
             <div id="adminTools" class="hidden">
-                <div class="flex items-center gap-2">
-                    <span class="text-[8px] font-black text-green-500 animate-pulse">LIVE SINKRON</span>
-                    <label class="bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-black cursor-pointer uppercase">
-                        Import
-                        <input type="file" id="importExcel" class="hidden" accept=".xlsx, .xls">
-                    </label>
-                </div>
+                <label class="bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-black cursor-pointer uppercase">
+                    Import
+                    <input type="file" id="importExcel" class="hidden" accept=".xlsx, .xls">
+                </label>
             </div>
         </div>
         <div class="relative">
@@ -70,13 +66,10 @@
                     <input type="text" id="searchCustomer" list="customerList" placeholder="Nama Toko..." class="w-full p-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-500 outline-none font-bold text-slate-800">
                     <datalist id="customerList"></datalist>
                 </div>
-
                 <div id="orderItems" class="space-y-4"></div>
-
                 <button onclick="addItemRow()" class="mt-6 flex items-center gap-2 text-blue-600 font-black p-3 rounded-xl border-2 border-dashed border-blue-200 w-full justify-center text-xs uppercase">
                     + Tambah Item
                 </button>
-
                 <div class="mt-8 p-5 bg-slate-900 rounded-2xl text-white">
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
@@ -127,26 +120,20 @@
                 currentUser = USERS[pass];
                 document.getElementById('loginPage').classList.add('hidden');
                 if(currentUser.role === 'admin') document.getElementById('adminTools').classList.remove('hidden');
-                fetchFromGithub();
-                
-                // --- UPDATE 10 DETIK ---
-                // Menjalankan refresh otomatis hanya jika user sudah login
-                setInterval(() => {
-                    fetchFromGithub();
-                }, 10000); 
+                fetchFromGithub(); // Tarik data saat pertama kali login
             } else { alert("❌ Password Salah!"); }
         }
 
         async function fetchFromGithub() {
             try {
-                // Perbaikan variabel pemanggil URL
-                const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
+                // Gunakan timestamp untuk memastikan data bukan cache
+                const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?t=${new Date().getTime()}`;
                 const res = await fetch(url, { headers: { Authorization: `token ${GITHUB_TOKEN}` } });
                 const data = await res.json();
                 masterData = JSON.parse(decodeURIComponent(escape(atob(data.content))));
                 renderTable();
                 updateCustomerDatalist();
-            } catch (e) { console.log("Refresh gagal atau data belum tersedia."); }
+            } catch (e) { console.log("Gagal memuat data."); }
         }
 
         function getFilteredData() {
@@ -168,7 +155,7 @@
                     <td class="p-4 uppercase text-[10px]">${item.Merk || '-'}</td>
                     <td class="p-4 text-blue-600 font-black">${item.QTY || 0}</td>
                 </tr>
-            `).join('') : `<tr><td colspan="4" class="p-10 text-center italic text-slate-400 font-normal">Belum ada data...</td></tr>`;
+            `).join('') : `<tr><td colspan="4" class="p-10 text-center italic">Belum ada data...</td></tr>`;
         }
 
         function formatRupiah(angka) {
@@ -185,7 +172,6 @@
             const container = document.getElementById('orderItems');
             const id = Date.now();
             const uniqueNames = [...new Set(getFilteredData().map(s => s.Nama))];
-
             const row = document.createElement('div');
             row.className = "order-item bg-slate-50 p-4 rounded-xl border border-slate-100 relative";
             row.innerHTML = `
@@ -203,8 +189,7 @@
                         <span class="absolute left-3 top-3 text-[10px] font-black text-slate-400">Rp</span>
                         <input type="text" oninput="this.value = formatRupiah(this.value); calcTotal();" placeholder="Harga" class="item-price w-full pl-8 p-3 rounded-lg border-2 border-white font-bold text-sm outline-none">
                     </div>
-                </div>
-            `;
+                </div>`;
             container.appendChild(row);
         }
 
@@ -250,11 +235,15 @@
             alert("✅ Pesanan Disalin ke Clipboard!");
         }
 
+        // FUNGSI PINDAH HALAMAN SEKALIGUS UPDATE DATA
         function showPage(p) {
             document.getElementById('homePage').classList.toggle('hidden', p !== 'home');
             document.getElementById('pesananPage').classList.toggle('hidden', p !== 'pesanan');
             document.getElementById('btn-home').classList.toggle('active-nav', p === 'home');
             document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
+            
+            // Setiap kali user pindah halaman, tarik data terbaru dari Cloud
+            if(currentUser) fetchFromGithub();
         }
 
         function filterTable() {
