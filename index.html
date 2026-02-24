@@ -55,7 +55,7 @@
 
     <main class="flex-1 overflow-y-auto pb-24">
         <section id="homePage" class="p-4">
-            <div id="syncStatus" class="text-[9px] font-bold text-blue-500 mb-2 hidden uppercase tracking-widest text-center">🔄 Sinkronisasi...</div>
+            <div id="syncStatus" class="text-[9px] font-bold text-blue-500 mb-2 hidden uppercase tracking-widest text-center">🔄 Sinkronisasi Cloud...</div>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="overflow-x-auto custom-scroll">
                     <table class="w-full text-left text-xs">
@@ -63,7 +63,7 @@
                             <tr id="tableHeader" class="text-slate-500 font-black uppercase tracking-tighter"></tr>
                         </thead>
                         <tbody id="tableBody" class="divide-y divide-slate-100 font-bold text-slate-700">
-                            <tr><td colspan="4" class="p-10 text-center italic text-slate-400">Silakan login untuk memuat data.</td></tr>
+                            <tr><td colspan="4" class="p-10 text-center italic text-slate-400">Memuat data...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -111,7 +111,6 @@
     </nav>
 
     <script>
-        // KONFIGURASI GITHUB
         const GITHUB_TOKEN = "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";
         const REPO_OWNER = "kososon"; 
         const REPO_NAME = "SOH";   
@@ -134,163 +133,138 @@
                 document.getElementById('btnLogout').classList.remove('hidden');
                 if(currentUser.role === 'admin') document.getElementById('adminTools').classList.remove('hidden');
                 
-                // Ambil data pertama kali
+                // Ambil data terbaru langsung setelah login
                 fetchFromGithub(true); 
                 
-                // Set interval untuk cek data baru (setiap 20 detik)
+                // Cek update otomatis setiap 15 detik
                 if(!refreshInterval) {
-                    refreshInterval = setInterval(() => fetchFromGithub(false), 20000);
+                    refreshInterval = setInterval(() => fetchFromGithub(false), 15000);
                 }
             } else { alert("❌ Password Salah!"); }
         }
 
         function logout() {
-            if(confirm("Logout dari aplikasi?")) {
+            if(confirm("Logout?")) {
                 clearInterval(refreshInterval);
-                refreshInterval = null;
-                location.reload(); // Reload untuk reset state total
+                location.reload();
             }
         }
 
-        // FUNGSI AMBIL DATA (PENGGUNAAN API GITHUB YANG BENAR)
         async function fetchFromGithub(forceRender = false) {
             if (!currentUser) return;
             const statusEl = document.getElementById('syncStatus');
             statusEl.classList.remove('hidden');
 
             try {
-                // Ambil data lewat API utama (bukan raw) untuk mendapatkan SHA terbaru agar tidak kena cache browser
+                // Gunakan cache buster (?t=) agar browser tidak mengambil data lama dari memori HP
                 const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?t=${new Date().getTime()}`;
                 const res = await fetch(url, {
-                    headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
+                    headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Cache-Control': 'no-cache' }
                 });
 
                 if (res.ok) {
                     const json = await res.json();
                     const content = JSON.parse(decodeURIComponent(escape(atob(json.content))));
                     
-                    // Cek jika data berbeda dengan yang ada di memori
+                    // Bandingkan data cloud dengan data di HP
                     if (JSON.stringify(content) !== JSON.stringify(masterData) || forceRender) {
                         masterData = content;
                         renderTable();
                         updateCustomerDatalist();
-                        console.log("✅ Data Terupdate!");
+                        console.log("✅ Sync Berhasil");
                     }
                 }
             } catch (e) {
-                console.error("Gagal sinkronisasi:", e);
+                console.error("Gagal ambil data cloud");
             } finally {
-                setTimeout(() => statusEl.classList.add('hidden'), 1000);
+                setTimeout(() => statusEl.classList.add('hidden'), 800);
             }
         }
 
+        async function saveToGithub() {
+            const label = document.getElementById('btnImportLabel');
+            label.innerText = "⏳ SIMPAN...";
+            
+            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
+            
+            try {
+                // 1. Ambil SHA file terbaru agar tidak konflik
+                const res = await fetch(url, { headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Cache-Control': 'no-cache' } });
+                let sha = "";
+                if(res.ok) {
+                    const data = await res.json();
+                    sha = data.sha;
+                }
+
+                // 2. Kirim data baru
+                const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
+                const putRes = await fetch(url, {
+                    method: "PUT",
+                    headers: { "Authorization": `token ${GITHUB_TOKEN}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        message: "Update SOH Mobile",
+                        content: content,
+                        sha: sha
+                    })
+                });
+
+                if(putRes.ok) {
+                    alert("✅ DATA TERSIMPAN PERMANEN DI CLOUD!");
+                    fetchFromGithub(true); // Pastikan tampilan langsung update
+                } else {
+                    alert("❌ GAGAL SIMPAN KE CLOUD. Cek Token/Koneksi.");
+                }
+            } catch (e) {
+                alert("❌ ERROR KONEKSI.");
+            } finally {
+                label.innerText = "IMPORT";
+            }
+        }
+
+        document.getElementById('importExcel').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const workbook = XLSX.read(evt.target.result, { type: 'binary' });
+                masterData = {
+                    keramik: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Keramik"] || []),
+                    eksternal: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Eksternal"] || []),
+                    customer: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Customer"] || [])
+                };
+                renderTable();
+                saveToGithub(); // Langsung simpan ke GitHub setelah import
+            };
+            reader.readAsBinaryString(file);
+        });
+
         function renderTable() {
             const data = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
-            const head = document.getElementById('tableHeader');
             const body = document.getElementById('tableBody');
-            
+            const head = document.getElementById('tableHeader');
             head.innerHTML = `<th class="p-4">Nama</th><th class="p-4">Lot</th><th class="p-4">Merk</th><th class="p-4">QTY</th>`;
             
             if (data.length === 0) {
-                body.innerHTML = `<tr><td colspan="4" class="p-10 text-center italic text-slate-400">Data kosong di Cloud. Admin perlu Import.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400 italic">Data Cloud Masih Kosong.</td></tr>`;
                 return;
             }
 
             body.innerHTML = data.map(item => `
-                <tr class="active:bg-slate-50 border-b">
+                <tr class="border-b active:bg-slate-50">
                     <td class="p-4">${item.Nama || '-'}</td>
                     <td class="p-4 text-slate-500">${item.Lot || '-'}</td>
-                    <td class="p-4 uppercase text-[10px]">${item.Merk || '-'}</td>
+                    <td class="p-4 text-[10px] uppercase">${item.Merk || '-'}</td>
                     <td class="p-4 text-blue-600 font-black">${item.QTY || 0}</td>
                 </tr>
             `).join('');
         }
 
-        // FUNGSI SIMPAN DATA (HANYA UNTUK ADMIN)
-        async function saveToGithub() {
-            const btnLabel = document.getElementById('btnImportLabel');
-            btnLabel.innerText = "Saving...";
-            btnLabel.style.opacity = "0.5";
-
-            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
-            
-            try {
-                // 1. Dapatkan SHA terbaru (Wajib untuk update file di GitHub)
-                const checkRes = await fetch(url, { headers: { Authorization: `token ${GITHUB_TOKEN}` } });
-                let sha = "";
-                if(checkRes.ok) {
-                    const fileData = await checkRes.json();
-                    sha = fileData.sha;
-                }
-
-                // 2. Encode data ke Base64
-                const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
-                
-                // 3. Kirim ke GitHub
-                const saveRes = await fetch(url, {
-                    method: "PUT",
-                    headers: { 
-                        Authorization: `token ${GITHUB_TOKEN}`, 
-                        "Content-Type": "application/json" 
-                    },
-                    body: JSON.stringify({ 
-                        message: `Update Data by Admin: ${new Date().toLocaleString()}`, 
-                        content: content, 
-                        sha: sha 
-                    })
-                });
-
-                if(saveRes.ok) {
-                    alert("✅ Berhasil Simpan ke Cloud!");
-                } else {
-                    const err = await saveRes.json();
-                    alert("❌ Gagal Simpan: " + err.message);
-                }
-            } catch (e) {
-                alert("❌ Terjadi kesalahan jaringan.");
-            } finally {
-                btnLabel.innerText = "Import";
-                btnLabel.style.opacity = "1";
-            }
-        }
-
-        // EVENT LISTENER IMPORT
-        document.getElementById('importExcel').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if(!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                try {
-                    const workbook = XLSX.read(evt.target.result, { type: 'binary' });
-                    const newData = {
-                        keramik: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Keramik"] || []),
-                        eksternal: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Eksternal"] || []),
-                        customer: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Customer"] || [])
-                    };
-
-                    if(newData.keramik.length === 0 && newData.eksternal.length === 0) {
-                        alert("⚠️ Format file salah atau Sheet kosong!");
-                        return;
-                    }
-
-                    masterData = newData; // Update memori lokal
-                    renderTable();        // Render ke layar
-                    saveToGithub();       // Simpan ke cloud
-                } catch (err) {
-                    alert("❌ Gagal membaca file Excel!");
-                }
-            };
-            reader.readAsBinaryString(file);
-        });
-
-        // FUNGSI LAINNYA (Pesanan, Filter, Clock)
         function showPage(p) {
             document.getElementById('homePage').classList.toggle('hidden', p !== 'home');
             document.getElementById('pesananPage').classList.toggle('hidden', p !== 'pesanan');
             document.getElementById('btn-home').classList.toggle('active-nav', p === 'home');
             document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
-            if(currentUser) fetchFromGithub(false); 
+            if(currentUser) fetchFromGithub(false);
         }
 
         function filterTable() {
@@ -298,6 +272,11 @@
             document.querySelectorAll('#tableBody tr').forEach(r => {
                 r.style.display = r.innerText.toLowerCase().includes(v) ? '' : 'none';
             });
+        }
+
+        function updateCustomerDatalist() {
+            if(!masterData.customer) return;
+            document.getElementById('customerList').innerHTML = masterData.customer.map(c => `<option value="${c['nama toko']} (${c['nama customer']})">`).join('');
         }
 
         function formatRupiah(angka) {
@@ -309,22 +288,18 @@
             const id = Date.now();
             const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const uniqueNames = [...new Set(allStok.map(s => s.Nama))];
-            
             const row = document.createElement('div');
             row.className = "order-item bg-slate-50 p-4 rounded-xl border border-slate-100 relative mb-4";
             row.innerHTML = `
                 <button onclick="this.parentElement.remove(); calcTotal();" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs font-black">×</button>
                 <div class="space-y-3">
-                    <input type="text" list="stok-${id}" onchange="updateLotDropdown(this)" placeholder="Pilih Motif..." class="item-name w-full p-3 rounded-lg border-2 border-white focus:border-blue-500 outline-none font-bold text-sm">
+                    <input type="text" list="stok-${id}" onchange="updateLotDropdown(this)" placeholder="Pilih Motif..." class="item-name w-full p-3 rounded-lg border-2 border-white outline-none font-bold text-sm">
                     <datalist id="stok-${id}">${uniqueNames.map(n => `<option value="${n}">`).join('')}</datalist>
                     <div class="grid grid-cols-2 gap-2">
-                        <select class="item-lot p-3 rounded-lg border-2 border-white text-xs font-bold outline-none"><option value="">Pilih Lot</option></select>
+                        <select class="item-lot p-3 rounded-lg border-2 border-white text-xs font-bold outline-none"><option value="">Lot</option></select>
                         <input type="number" oninput="calcTotal()" placeholder="QTY" class="item-qty p-3 rounded-lg border-2 border-white text-center font-black text-blue-600 outline-none">
                     </div>
-                    <div class="relative">
-                        <span class="absolute left-3 top-3 text-[10px] font-black text-slate-400">Rp</span>
-                        <input type="text" oninput="this.value = this.value.replace(/[^0-9]/g, ''); calcTotal();" placeholder="Harga" class="item-price w-full pl-8 p-3 rounded-lg border-2 border-white font-bold text-sm outline-none">
-                    </div>
+                    <input type="text" oninput="this.value = this.value.replace(/[^0-9]/g, ''); calcTotal();" placeholder="Harga Satuan" class="item-price w-full p-3 rounded-lg border-2 border-white font-bold text-sm outline-none">
                 </div>`;
             container.appendChild(row);
         }
@@ -334,7 +309,7 @@
             const lotSelect = row.querySelector('.item-lot');
             const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const lots = allStok.filter(s => s.Nama === input.value);
-            lotSelect.innerHTML = '<option value="">Pilih Lot</option>' + lots.map(item => `<option value="${item.Lot || '-'}">${item.Lot || '-'} (${item.QTY})</option>`).join('');
+            lotSelect.innerHTML = '<option value="">Lot</option>' + lots.map(item => `<option value="${item.Lot}">${item.Lot} (${item.QTY})</option>`).join('');
         }
 
         function calcTotal() {
@@ -348,14 +323,27 @@
             document.getElementById('totalPriceDisplay').innerText = formatRupiah(pTotal);
         }
 
-        function updateCustomerDatalist() {
-            if(!masterData.customer) return;
-            document.getElementById('customerList').innerHTML = masterData.customer.map(c => `<option value="${c['nama toko']} (${c['nama customer']})">`).join('');
+        function generateOrder() {
+            const customer = document.getElementById('searchCustomer').value;
+            if(!customer) return alert("Pilih Customer!");
+            let itemsTxt = ""; let qTotal = 0; let pTotal = 0;
+            document.querySelectorAll('.order-item').forEach(row => {
+                const n = row.querySelector('.item-name').value;
+                const l = row.querySelector('.item-lot').value;
+                const q = parseInt(row.querySelector('.item-qty').value) || 0;
+                const p = parseInt(row.querySelector('.item-price').value) || 0;
+                if(n && q > 0) {
+                    itemsTxt += `${n} / ${l} / ${q} / ${formatRupiah(p)}\n`;
+                    qTotal += q; pTotal += (q * p);
+                }
+            });
+            const final = `Pesanan Toko: *${customer}*\n\n${itemsTxt}\nTotal QTY: ${qTotal}\nTotal: ${formatRupiah(pTotal)}\n\nTerimakasih.`;
+            navigator.clipboard.writeText(final);
+            alert("Pesanan Disalin!");
         }
 
         setInterval(() => {
-            const clockEl = document.getElementById('liveClock');
-            if(clockEl) clockEl.innerText = new Date().toLocaleString('id-ID');
+            document.getElementById('liveClock').innerText = new Date().toLocaleString('id-ID');
         }, 1000);
     </script>
 </body>
