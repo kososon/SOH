@@ -2,117 +2,115 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOH - System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SOH Mobile</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .active-tab { border-left: 4px solid #3b82f6; background-color: #1e293b; color: #60a5fa; }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .active-nav { color: #3b82f6; border-top: 3px solid #3b82f6; }
         .hidden { display: none; }
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        /* Mobile Scrollbar */
+        .custom-scroll::-webkit-scrollbar { height: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-gray-100 flex h-screen overflow-hidden">
+<body class="bg-slate-50 flex flex-col h-screen overflow-hidden text-slate-900">
 
-    <nav class="w-64 bg-slate-900 text-white flex flex-col p-5 shadow-2xl z-20">
-        <div class="mb-10 text-center">
-            <h1 class="text-3xl font-black text-blue-500 tracking-tighter">SOH</h1>
-            <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Inventory & Order System</p>
-        </div>
-        
-        <div class="space-y-2 flex-1">
-            <button onclick="showPage('home')" id="btn-home" class="w-full py-3 px-4 rounded text-left hover:bg-slate-800 transition active-tab font-bold text-sm">🏠 DAFTAR STOK</button>
-            <button onclick="showPage('pesanan')" id="btn-pesanan" class="w-full py-3 px-4 rounded text-left hover:bg-slate-800 transition font-bold text-sm">📝 BUAT PESANAN</button>
-        </div>
-
-        <div class="pt-5 border-t border-slate-700">
-            <p id="userStatus" class="text-xs font-mono text-green-400"></p>
-            <button onclick="location.reload()" class="text-xs text-red-400 mt-2 block hover:underline italic">Logout System</button>
-        </div>
-    </nav>
-
-    <main class="flex-1 flex flex-col overflow-hidden relative">
-        
-        <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center">
-            <div class="bg-white p-10 rounded-3xl shadow-2xl w-96 border border-slate-200">
-                <div class="text-center mb-8">
-                    <h2 class="text-4xl font-black text-slate-900 mb-2">SOH</h2>
-                    <p class="text-sm text-slate-500 font-medium">Authentication Required</p>
-                </div>
-                <input type="password" id="passInput" placeholder="Masukkan Password" class="w-full p-4 border-2 rounded-2xl mb-4 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none text-center text-xl font-bold transition-all">
-                <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black shadow-lg uppercase tracking-wider">Login</button>
+    <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-slate-200">
+            <div class="text-center mb-6">
+                <h2 class="text-4xl font-black text-slate-900 tracking-tighter">SOH</h2>
+                <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mt-1">Mobile Access</p>
             </div>
+            <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 focus:ring-4 focus:ring-blue-100 outline-none text-center text-xl font-bold transition-all bg-slate-50">
+            <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg active:scale-95 transition-all uppercase">Login</button>
         </div>
+    </div>
 
-        <header class="bg-white border-b p-4 flex justify-between items-center shadow-sm z-10">
-            <div class="w-1/2 relative">
-                <span class="absolute left-4 top-2.5 text-gray-400">🔍</span>
-                <input type="text" id="globalSearch" onkeyup="filterTable()" placeholder="Cari merk, ukuran, atau nama barang..." class="w-full pl-12 pr-4 py-2.5 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium">
-            </div>
-            
-            <div id="adminTools" class="hidden flex items-center gap-4">
-                <label class="bg-slate-800 hover:bg-black text-white px-6 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all shadow-md uppercase">
-                    Import Excel
+    <header class="bg-white border-b p-4 shadow-sm z-10">
+        <div class="flex items-center justify-between mb-3">
+            <h1 class="text-2xl font-black text-blue-600 tracking-tighter">SOH</h1>
+            <div id="adminTools" class="hidden">
+                <label class="bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-black cursor-pointer uppercase">
+                    Import
                     <input type="file" id="importExcel" class="hidden" accept=".xlsx, .xls">
                 </label>
             </div>
-        </header>
+        </div>
+        <div class="relative">
+            <span class="absolute left-3 top-2.5 text-gray-400">🔍</span>
+            <input type="text" id="globalSearch" onkeyup="filterTable()" placeholder="Cari barang atau merk..." class="w-full pl-9 pr-4 py-2 bg-slate-100 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium">
+        </div>
+    </header>
 
-        <section id="homePage" class="p-6 overflow-y-auto">
+    <main class="flex-1 overflow-y-auto pb-24">
+        
+        <section id="homePage" class="p-4">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-slate-50 border-b border-slate-200">
-                        <tr id="tableHeader" class="text-slate-500 text-[11px] uppercase font-black tracking-widest"></tr>
-                    </thead>
-                    <tbody id="tableBody" class="text-slate-700 divide-y divide-slate-100">
-                        <tr><td colspan="5" class="p-20 text-center text-slate-300 font-bold italic">Menunggu data dari Cloud...</td></tr>
-                    </tbody>
-                </table>
+                <div class="overflow-x-auto custom-scroll">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 border-b">
+                            <tr id="tableHeader" class="text-slate-500 font-black uppercase tracking-tighter">
+                                </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-100 font-bold text-slate-700">
+                            </tbody>
+                    </table>
+                </div>
             </div>
         </section>
 
-        <section id="pesananPage" class="hidden p-6 overflow-y-auto bg-gray-50">
-            <div class="max-w-5xl mx-auto bg-white p-10 rounded-3xl shadow-xl border border-slate-100">
-                <div class="flex justify-between items-end border-b-4 border-slate-900 pb-4 mb-8">
-                    <h2 class="text-3xl font-black text-slate-900 uppercase">Buat Pesanan</h2>
-                    <p class="text-slate-400 font-bold text-sm" id="liveClock"></p>
-                </div>
-                
-                <div class="mb-10">
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Pilih Toko / Customer</label>
-                    <input type="text" id="searchCustomer" list="customerList" placeholder="Ketik nama toko atau customer..." class="w-full p-5 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold text-lg">
+        <section id="pesananPage" class="hidden p-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <div class="mb-6">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Customer</label>
+                    <input type="text" id="searchCustomer" list="customerList" placeholder="Nama Toko..." class="w-full p-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-500 outline-none font-bold text-slate-800">
                     <datalist id="customerList"></datalist>
                 </div>
 
-                <div id="orderItems" class="space-y-4"></div>
+                <div id="orderItems" class="space-y-4">
+                    </div>
 
-                <button onclick="addItemRow()" class="mt-8 flex items-center gap-3 text-blue-600 font-black hover:bg-blue-50 p-3 rounded-xl transition-all uppercase text-sm border-2 border-dashed border-blue-200 w-full justify-center">
-                    <span>+ Tambah Baris Barang</span>
+                <button onclick="addItemRow()" class="mt-6 flex items-center gap-2 text-blue-600 font-black p-3 rounded-xl border-2 border-dashed border-blue-200 w-full justify-center text-xs uppercase">
+                    + Tambah Item
                 </button>
 
-                <div class="mt-12 p-8 bg-slate-900 rounded-3xl text-white flex justify-between items-center shadow-2xl">
-                    <div class="flex gap-10">
+                <div class="mt-8 p-5 bg-slate-900 rounded-2xl text-white">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
-                            <p class="text-slate-400 text-[10px] uppercase font-black tracking-widest mb-1">Total QTY</p>
-                            <p class="text-3xl font-black text-blue-400" id="totalQtyDisplay">0</p>
+                            <p class="text-slate-400 text-[9px] uppercase font-black">Total QTY</p>
+                            <p class="text-xl font-black text-blue-400" id="totalQtyDisplay">0</p>
                         </div>
                         <div>
-                            <p class="text-slate-400 text-[10px] uppercase font-black tracking-widest mb-1">Total Harga</p>
-                            <p class="text-3xl font-black text-green-400" id="totalPriceDisplay">Rp 0</p>
+                            <p class="text-slate-400 text-[9px] uppercase font-black">Total Harga</p>
+                            <p class="text-xl font-black text-green-400" id="totalPriceDisplay">Rp 0</p>
                         </div>
                     </div>
-                    <button onclick="generateOrder()" class="bg-blue-500 hover:bg-blue-400 text-white px-12 py-5 rounded-2xl font-black shadow-xl uppercase tracking-tighter transition-all">Generate & Copy</button>
+                    <button onclick="generateOrder()" class="w-full bg-blue-500 hover:bg-blue-400 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Generate & Copy</button>
                 </div>
+                <p id="liveClock" class="text-[9px] text-center mt-4 text-slate-400 font-bold uppercase"></p>
             </div>
         </section>
     </main>
 
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2 pb-6 z-50">
+        <button onclick="showPage('home')" id="btn-home" class="flex flex-col items-center gap-1 active-nav px-6 pt-2">
+            <span class="text-xl">🏠</span>
+            <span class="text-[10px] font-black uppercase">Stok</span>
+        </button>
+        <button onclick="showPage('pesanan')" id="btn-pesanan" class="flex flex-col items-center gap-1 px-6 pt-2">
+            <span class="text-xl">📝</span>
+            <span class="text-[10px] font-black uppercase">Order</span>
+        </button>
+    </nav>
+
     <script>
         const GITHUB_TOKEN = "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";
-        const REPO_OWNER = "USERNAME_ANDA"; 
-        const REPO_NAME = "NAMA_REPO_ANDA";   
+        const REPO_OWNER = "kososon"; 
+        const REPO_NAME = "SOH";   
         const DATA_FILE = "data.json";
 
         let currentUser = null;
@@ -137,13 +135,13 @@
 
         async function fetchFromGithub() {
             try {
-                const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
+                const url = `https://api.github.com/repos/${kososon}/${SOH}/contents/${DATA_FILE}`;
                 const res = await fetch(url, { headers: { Authorization: `token ${GITHUB_TOKEN}` } });
                 const data = await res.json();
                 masterData = JSON.parse(decodeURIComponent(escape(atob(data.content))));
                 renderTable();
                 updateCustomerDatalist();
-            } catch (e) { console.log("Data Cloud tidak ditemukan."); }
+            } catch (e) { console.log("Fetch failed."); }
         }
 
         function getFilteredData() {
@@ -156,16 +154,16 @@
             const data = getFilteredData();
             const head = document.getElementById('tableHeader');
             const body = document.getElementById('tableBody');
-            body.innerHTML = "";
-            const cols = ["Nama", "Lot", "Merk", "Ukuran", "QTY"];
-            head.innerHTML = cols.map(c => `<th class="p-5">${c}</th>`).join('');
-            if(!data.length) { body.innerHTML = `<tr><td colspan="5" class="p-20 text-center text-slate-300 italic">No data.</td></tr>`; return; }
-            data.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 border-b border-slate-100 transition-colors";
-                tr.innerHTML = cols.map(c => `<td class="p-5 font-bold text-slate-800">${item[c] || '-'}</td>`).join('');
-                body.appendChild(tr);
-            });
+            const cols = ["Nama", "Lot", "Merk", "QTY"];
+            head.innerHTML = cols.map(c => `<th class="p-4">${c}</th>`).join('');
+            body.innerHTML = data.length ? data.map(item => `
+                <tr class="active:bg-slate-50 transition-colors">
+                    <td class="p-4">${item.Nama || '-'}</td>
+                    <td class="p-4 text-slate-500">${item.Lot || '-'}</td>
+                    <td class="p-4 uppercase text-[10px]">${item.Merk || '-'}</td>
+                    <td class="p-4 text-blue-600 font-black">${item.QTY || 0}</td>
+                </tr>
+            `).join('') : `<tr><td colspan="4" class="p-10 text-center italic">No data.</td></tr>`;
         }
 
         function formatRupiah(angka) {
@@ -174,42 +172,35 @@
             sisa = split[0].length % 3,
             rupiah = split[0].substr(0, sisa),
             ribuan = split[0].substr(sisa).match(/\d{3}/gi);
-            if (ribuan) {
-                let separator = sisa ? '.' : '';
-                rupiah += separator + ribuan.join('.');
-            }
+            if (ribuan) { rupiah += (sisa ? '.' : '') + ribuan.join('.'); }
             return split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
-        }
-
-        function handlePriceInput(input) {
-            input.value = formatRupiah(input.value);
-            calcTotal();
         }
 
         function addItemRow() {
             const container = document.getElementById('orderItems');
             const id = Date.now();
-            const filteredStok = getFilteredData();
-            const uniqueNames = [...new Set(filteredStok.map(s => s.Nama))];
+            const uniqueNames = [...new Set(getFilteredData().map(s => s.Nama))];
 
             const row = document.createElement('div');
-            row.className = "order-item flex gap-3 items-center bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-sm transition-all hover:border-blue-200";
+            row.className = "order-item bg-slate-50 p-4 rounded-xl border border-slate-100 relative";
             row.innerHTML = `
-                <div class="flex-[2]">
-                    <input type="text" list="stok-${id}" onchange="updateLotDropdown(this)" placeholder="Nama Barang..." class="item-name w-full p-3 border-2 border-slate-50 rounded-xl bg-slate-50 outline-none focus:border-blue-500 font-bold text-slate-800">
+                <button onclick="this.parentElement.remove(); calcTotal();" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs font-black">×</button>
+                <div class="space-y-3">
+                    <input type="text" list="stok-${id}" onchange="updateLotDropdown(this)" placeholder="Pilih Motif..." class="item-name w-full p-3 rounded-lg border-2 border-white focus:border-blue-500 outline-none font-bold text-sm">
                     <datalist id="stok-${id}">${uniqueNames.map(n => `<option value="${n}">`).join('')}</datalist>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <select class="item-lot p-3 rounded-lg border-2 border-white text-xs font-bold outline-none">
+                            <option value="">Pilih Lot</option>
+                        </select>
+                        <input type="number" oninput="calcTotal()" placeholder="QTY" class="item-qty p-3 rounded-lg border-2 border-white text-center font-black text-blue-600 outline-none">
+                    </div>
+                    
+                    <div class="relative">
+                        <span class="absolute left-3 top-3 text-[10px] font-black text-slate-400">Rp</span>
+                        <input type="text" oninput="this.value = formatRupiah(this.value); calcTotal();" placeholder="Harga" class="item-price w-full pl-8 p-3 rounded-lg border-2 border-white font-bold text-sm outline-none">
+                    </div>
                 </div>
-                <div class="flex-1">
-                    <select class="item-lot w-full p-3 border-2 border-slate-50 rounded-xl bg-slate-50 font-bold text-slate-600 outline-none">
-                        <option value="">Pilih Lot</option>
-                    </select>
-                </div>
-                <input type="number" oninput="calcTotal()" placeholder="0" class="item-qty w-24 p-3 border-2 border-slate-50 rounded-xl font-black text-blue-600 text-center outline-none">
-                <div class="w-44 relative">
-                    <span class="absolute left-3 top-3.5 text-slate-400 text-xs font-black">Rp</span>
-                    <input type="text" oninput="handlePriceInput(this)" placeholder="Harga" class="item-price w-full pl-10 p-3 border-2 border-slate-50 rounded-xl font-bold text-slate-700 outline-none">
-                </div>
-                <button onclick="this.parentElement.remove(); calcTotal();" class="text-red-300 hover:text-red-600 font-black text-2xl px-2">×</button>
             `;
             container.appendChild(row);
         }
@@ -217,107 +208,55 @@
         function updateLotDropdown(input) {
             const row = input.closest('.order-item');
             const lotSelect = row.querySelector('.item-lot');
-            const filteredStok = getFilteredData();
-            const availableLots = filteredStok.filter(s => s.Nama === input.value);
-            lotSelect.innerHTML = '<option value="">Pilih Lot</option>';
-            availableLots.forEach(item => {
-                const opt = document.createElement('option');
-                opt.value = item.Lot || '-';
-                opt.text = `${item.Lot || '-'} (Sisa: ${item.QTY})`;
-                lotSelect.appendChild(opt);
-            });
+            const lots = getFilteredData().filter(s => s.Nama === input.value);
+            lotSelect.innerHTML = '<option value="">Pilih Lot</option>' + lots.map(item => `<option value="${item.Lot || '-'}">${item.Lot || '-'} (${item.QTY})</option>`).join('');
         }
 
         function calcTotal() {
-            let totalQty = 0; let totalPrice = 0;
+            let qTotal = 0, pTotal = 0;
             document.querySelectorAll('.order-item').forEach(row => {
-                const qty = parseInt(row.querySelector('.item-qty').value) || 0;
-                const pVal = parseInt(row.querySelector('.item-price').value.replace(/\./g, '')) || 0;
-                totalQty += qty; totalPrice += (qty * pVal);
+                const q = parseInt(row.querySelector('.item-qty').value) || 0;
+                const p = parseInt(row.querySelector('.item-price').value.replace(/\./g, '')) || 0;
+                qTotal += q; pTotal += (q * p);
             });
-            document.getElementById('totalQtyDisplay').innerText = totalQty;
-            document.getElementById('totalPriceDisplay').innerText = 'Rp ' + formatRupiah(totalPrice.toString());
+            document.getElementById('totalQtyDisplay').innerText = qTotal;
+            document.getElementById('totalPriceDisplay').innerText = 'Rp ' + formatRupiah(pTotal.toString());
         }
 
         function generateOrder() {
-            const tokoInput = document.getElementById('searchCustomer').value;
-            if(!tokoInput) { alert("Pilih Toko!"); return; }
-
-            const namaTokoOnly = tokoInput.split('(')[0].trim();
-            let itemsTxt = "";
-            let totalQ = 0;
-            let totalH = 0;
+            const customer = document.getElementById('searchCustomer').value;
+            if(!customer) return alert("Pilih Customer!");
+            
+            const namaToko = customer.split('(')[0].trim();
+            let itemsTxt = "", qTotal = 0, pTotal = 0;
 
             document.querySelectorAll('.order-item').forEach(row => {
                 const n = row.querySelector('.item-name').value;
                 const l = row.querySelector('.item-lot').value;
                 const q = parseInt(row.querySelector('.item-qty').value) || 0;
-                const pDisplay = row.querySelector('.item-price').value;
-                const pVal = parseInt(pDisplay.replace(/\./g, '')) || 0;
-
+                const pStr = row.querySelector('.item-price').value;
+                const pVal = parseInt(pStr.replace(/\./g, '')) || 0;
                 if(n && q > 0) {
-                    itemsTxt += `${n} / ${l || '-'} / ${q} / ${pDisplay}\n`;
-                    totalQ += q;
-                    totalH += (q * pVal);
+                    itemsTxt += `${n} / ${l || '-'} / ${q} / ${pStr}\n`;
+                    qTotal += q; pTotal += (q * pVal);
                 }
             });
 
-            const sekarang = new Date();
-            const tgl = sekarang.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            const n = new Date();
+            const tgl = n.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            const jam = n.getHours().toString().padStart(2, '0') + '.' + n.getMinutes().toString().padStart(2, '0') + '.' + n.getSeconds().toString().padStart(2, '0');
             
-            // Format jam dengan titik sebagai pemisah (HH.mm.ss)
-            const jam = sekarang.getHours().toString().padStart(2, '0') + '.' + 
-                        sekarang.getMinutes().toString().padStart(2, '0') + '.' + 
-                        sekarang.getSeconds().toString().padStart(2, '0');
-
-            const formatTotalHarga = formatRupiah(totalH.toString());
-
-            const finalString = `Berikut Pesanan Via WA Toko *${namaTokoOnly.toUpperCase()}*\n\nMotif / Lot / QTY / Harga\n${itemsTxt}\nTotal QTY : ${totalQ}\nJumlah : Rp. ${formatTotalHarga}\n\nPekanbaru, ${tgl} ${jam}\nTerimakasih`;
-
-            navigator.clipboard.writeText(finalString);
-            alert("📋 PESANAN DISALIN!\nSilakan paste ke WhatsApp.");
-        }
-
-        document.getElementById('importExcel').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                const workbook = XLSX.read(evt.target.result, { type: 'binary' });
-                if(workbook.Sheets["Data_Keramik"]) masterData.keramik = XLSX.utils.sheet_to_json(workbook.Sheets["Data_Keramik"]);
-                if(workbook.Sheets["Data_Eksternal"]) masterData.eksternal = XLSX.utils.sheet_to_json(workbook.Sheets["Data_Eksternal"]);
-                if(workbook.Sheets["Data_Customer"]) masterData.customer = XLSX.utils.sheet_to_json(workbook.Sheets["Data_Customer"]);
-                renderTable(); updateCustomerDatalist(); saveToGithub(); 
-            };
-            reader.readAsBinaryString(file);
-        });
-
-        async function saveToGithub() {
-            const url = `https://api.github.com/repos/${kososon}/${SOH}/contents/${DATA_FILE}`;
-            try {
-                let sha = "";
-                const checkRes = await fetch(url, { headers: { Authorization: `token ${GITHUB_TOKEN}` } });
-                if(checkRes.ok) { sha = (await checkRes.json()).sha; }
-                const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
-                await fetch(url, {
-                    method: "PUT",
-                    headers: { Authorization: `token ${GITHUB_TOKEN}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: "SOH Update", content: content, sha: sha || undefined })
-                });
-                alert("✅ Cloud Updated!");
-            } catch (e) { alert("❌ Error Save."); }
-        }
-
-        function updateCustomerDatalist() {
-            const list = document.getElementById('customerList');
-            if(!masterData.customer) return;
-            list.innerHTML = masterData.customer.map(c => `<option value="${c['nama toko']} (${c['nama customer']})">ID: ${c['id']}</option>`).join('');
+            const final = `Berikut Pesanan Via WA Toko *${namaToko.toUpperCase()}*\n\nMotif / Lot / QTY / Harga\n${itemsTxt}\nTotal QTY : ${qTotal}\nJumlah : Rp. ${formatRupiah(pTotal.toString())}\n\nPekanbaru, ${tgl} ${jam}\nTerimakasih`;
+            
+            navigator.clipboard.writeText(final);
+            alert("✅ Pesanan Disalin ke Clipboard!");
         }
 
         function showPage(p) {
             document.getElementById('homePage').classList.toggle('hidden', p !== 'home');
             document.getElementById('pesananPage').classList.toggle('hidden', p !== 'pesanan');
-            document.getElementById('btn-home').classList.toggle('active-tab', p === 'home');
-            document.getElementById('btn-pesanan').classList.toggle('active-tab', p === 'pesanan');
+            document.getElementById('btn-home').classList.toggle('active-nav', p === 'home');
+            document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
         }
 
         function filterTable() {
@@ -325,10 +264,45 @@
             document.querySelectorAll('#tableBody tr').forEach(r => r.style.display = r.innerText.toLowerCase().includes(v) ? '' : 'none');
         }
 
+        function updateCustomerDatalist() {
+            if(!masterData.customer) return;
+            document.getElementById('customerList').innerHTML = masterData.customer.map(c => `<option value="${c['nama toko']} (${c['nama customer']})">`).join('');
+        }
+
         setInterval(() => {
             const n = new Date();
-            document.getElementById('liveClock').innerText = n.toLocaleString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('liveClock').innerText = n.toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/:/g, '.');
         }, 1000);
+
+        // Github Sync (Sama dengan sebelumnya)
+        document.getElementById('importExcel').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const workbook = XLSX.read(evt.target.result, { type: 'binary' });
+                masterData.keramik = XLSX.utils.sheet_to_json(workbook.Sheets["Data_Keramik"] || {});
+                masterData.eksternal = XLSX.utils.sheet_to_json(workbook.Sheets["Data_Eksternal"] || {});
+                masterData.customer = XLSX.utils.sheet_to_json(workbook.Sheets["Data_Customer"] || {});
+                renderTable(); updateCustomerDatalist(); saveToGithub(); 
+            };
+            reader.readAsBinaryString(file);
+        });
+
+        async function saveToGithub() {
+            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
+            try {
+                let sha = "";
+                const checkRes = await fetch(url, { headers: { Authorization: `token ${GITHUB_TOKEN}` } });
+                if(checkRes.ok) sha = (await checkRes.json()).sha;
+                const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
+                await fetch(url, {
+                    method: "PUT",
+                    headers: { Authorization: `token ${GITHUB_TOKEN}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: "Mobile Sync", content: content, sha: sha || undefined })
+                });
+                alert("✅ Cloud Updated!");
+            } catch (e) { alert("❌ Cloud Error."); }
+        }
     </script>
 </body>
 </html>
