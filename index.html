@@ -18,7 +18,7 @@
 <body class="bg-slate-50 flex flex-col h-screen overflow-hidden text-slate-900">
 
     <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-sm">
             <div class="text-center mb-6">
                 <h2 class="text-4xl font-black text-slate-900 tracking-tighter">SOH</h2>
                 <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mt-1">Mobile Access</p>
@@ -174,11 +174,33 @@
             list.innerHTML = masterData.customer.map(c => `<option value="${c['nama toko'] || c['Nama Toko'] || ''}">`).join('');
         }
 
-        // Fungsi Format Ribuan saat mengetik
         function formatCurrency(input) {
             let val = input.value.replace(/\D/g, "");
             if (val === "") { input.value = ""; return; }
             input.value = new Intl.NumberFormat('id-ID').format(val);
+            calcTotal();
+        }
+
+        // FUNGSI VALIDASI QTY
+        function validateQty(input) {
+            const row = input.parentElement.parentElement;
+            const namaBarang = row.querySelector('.item-name').value;
+            const lotTerpilih = row.querySelector('.item-lot').value;
+            const qtyInput = parseFloat(input.value) || 0;
+
+            if (!namaBarang || !lotTerpilih) return;
+
+            // Cari stok di database
+            const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
+            const dataBarang = allStok.find(s => s.Nama === namaBarang && s.Lot === lotTerpilih);
+
+            if (dataBarang) {
+                const stokTersedia = parseFloat(dataBarang.QTY) || 0;
+                if (qtyInput > stokTersedia) {
+                    alert(`⚠️ Stok tidak cukup!\nBarang: ${namaBarang}\nLot: ${lotTerpilih}\nStok Tersedia: ${stokTersedia}`);
+                    input.value = stokTersedia; // Reset ke maksimal stok
+                }
+            }
             calcTotal();
         }
 
@@ -194,8 +216,10 @@
                 <input type="text" list="stok-${id}" onchange="updateLotOptions(this)" placeholder="Pilih Item..." class="item-name w-full p-2 rounded-lg border-2 border-white mb-2 font-bold text-sm outline-none">
                 <datalist id="stok-${id}">${uniqueNames.map(n => `<option value="${n}">`).join('')}</datalist>
                 <div class="grid grid-cols-2 gap-2">
-                    <select class="item-lot p-2 rounded-lg border-2 border-white text-xs font-bold outline-none"><option value="">Pilih Lot</option></select>
-                    <input type="number" oninput="calcTotal()" placeholder="QTY" class="item-qty p-2 rounded-lg border-2 border-white text-center font-black text-blue-600 outline-none">
+                    <select class="item-lot p-2 rounded-lg border-2 border-white text-xs font-bold outline-none" onchange="validateQty(this.parentElement.querySelector('.item-qty'))">
+                        <option value="">Pilih Lot</option>
+                    </select>
+                    <input type="number" oninput="validateQty(this)" placeholder="QTY" class="item-qty p-2 rounded-lg border-2 border-white text-center font-black text-blue-600 outline-none">
                 </div>
                 <input type="text" oninput="formatCurrency(this)" placeholder="Harga Satuan" class="item-price w-full p-2 rounded-lg border-2 border-white mt-2 font-bold text-sm outline-none">
             `;
@@ -205,9 +229,14 @@
         function updateLotOptions(input) {
             const row = input.parentElement;
             const lotSelect = row.querySelector('.item-lot');
+            const qtyInput = row.querySelector('.item-qty');
             const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const filtered = allStok.filter(s => s.Nama === input.value);
+            
             lotSelect.innerHTML = '<option value="">Pilih Lot</option>' + filtered.map(f => `<option value="${f.Lot}">${f.Lot} (Sisa: ${f.QTY})</option>`).join('');
+            
+            // Validasi ulang jika ganti barang tapi QTY sudah terisi
+            if(qtyInput.value) validateQty(qtyInput);
         }
 
         function calcTotal() {
@@ -215,7 +244,7 @@
             let totalQty = 0;
             document.querySelectorAll('#orderItems > div').forEach(row => {
                 const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
-                const priceRaw = row.querySelector('.item-price').value.replace(/\./g, ""); // Hapus titik format
+                const priceRaw = row.querySelector('.item-price').value.replace(/\./g, "");
                 const price = parseFloat(priceRaw) || 0;
                 
                 totalQty += qty;
@@ -277,7 +306,6 @@
             document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
         }
 
-        // Admin Save
         async function saveToGithub() {
             const token = prompt("PENGAMAN: Masukkan Token GitHub Admin:");
             if (!token) return;
