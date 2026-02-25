@@ -21,7 +21,7 @@
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm">
             <div class="text-center mb-6">
                 <h2 class="text-4xl font-black text-slate-900 tracking-tighter">SOH</h2>
-                <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mt-1">Mobile Access</p>
+                <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mt-1">Mobile Acces - MNU Pekanbarus</p>
             </div>
             <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50 outline-none focus:border-blue-500">
             <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg uppercase mb-4 active:scale-95 transition-all">Login</button>
@@ -135,7 +135,6 @@
         let masterData = { keramik: [], eksternal: [], customer: [] };
         let currentUser = null;
 
-        // FUNGSI SEARCH TERPADU
         function filterData() {
             const gSearch = document.getElementById('globalSearch').value.toLowerCase();
             const nSearch = document.getElementById('searchName').value.toLowerCase();
@@ -149,12 +148,9 @@
                 if (cells.length < 4) return;
 
                 const nama = cells[0].innerText.toLowerCase();
-                const lot = cells[1].innerText.toLowerCase();
-                const merk = cells[2].innerText.toLowerCase();
-                const qty = parseFloat(cells[3].innerText) || 0;
                 const fullText = row.innerText.toLowerCase();
+                const qty = parseFloat(cells[3].innerText) || 0;
 
-                // Logika Filter
                 const matchGlobal = fullText.includes(gSearch);
                 const matchName = nama.includes(nSearch);
                 const matchQty = (qty >= minQ && qty <= maxQ);
@@ -167,21 +163,36 @@
             });
         }
 
-        // Event Listeners untuk Search
         ['globalSearch', 'searchName', 'qtyMin', 'qtyMax'].forEach(id => {
             document.getElementById(id).addEventListener('input', filterData);
         });
 
         function login() {
-            const pass = document.getElementById('passInput').value.toLowerCase();
-            if (pass === 'team123' || pass === 'dare123') {
-                currentUser = (pass === 'team123') ? 'admin' : 'sales';
+            const pass = document.getElementById('passInput').value.toUpperCase(); // Case-insensitive
+            
+            // Definisikan Mapping Password ke Nama Sales
+            const users = {
+                'TEAM123': 'admin',
+                'ARI123': 'Arifin',
+                'MAU123': 'Maulana',
+                'RIK123': 'Riki Yolanda',
+                'AZH123': 'Azhar'
+            };
+
+            if (users[pass]) {
+                currentUser = users[pass];
                 document.getElementById('loginPage').classList.add('hidden');
                 document.getElementById('btnLogout').classList.remove('hidden');
-                if(currentUser === 'admin') document.getElementById('adminTools').classList.remove('hidden');
+                
+                if(currentUser === 'admin') {
+                    document.getElementById('adminTools').classList.remove('hidden');
+                }
+                
                 fetchData();
                 setInterval(fetchData, 30000);
-            } else { alert("Password Salah!"); }
+            } else { 
+                alert("Password Salah!"); 
+            }
         }
 
         function logout() { location.reload(); }
@@ -212,7 +223,7 @@
                     <td class="p-4 text-blue-600 font-black">${item.QTY || 0}</td>
                 </tr>
             `).join('');
-            filterData(); // Apply filter after render
+            filterData();
         }
 
         function updateCustomerDatalist() {
@@ -337,7 +348,7 @@
                     mode: "no-cors",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        sales: currentUser,
+                        sales: currentUser, // Nilai ini sekarang berisi nama Sales asli (Arifin/Maulana/dst)
                         customer: customer,
                         items: itemsReport + (note ? " | Note: " + note : ""),
                         total: totalHarga + " (" + totalQty + ") [" + shipMethod + "]"
@@ -355,4 +366,3 @@
     </script>
 </body>
 </html>
-
