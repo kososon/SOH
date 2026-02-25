@@ -42,7 +42,7 @@
                 <button onclick="logout()" id="btnLogout" class="hidden bg-red-50 text-red-600 px-3 py-2 rounded-lg text-[10px] font-black uppercase">Logout</button>
             </div>
         </div>
-        <input type="text" id="globalSearch" placeholder="Cari barang atau merk..." class="w-full px-4 py-2 bg-slate-100 rounded-xl outline-none text-sm font-medium focus:ring-2 focus:ring-blue-500">
+        <input type="text" id="globalSearch" placeholder="Cari Nama, Merk, Lot, atau QTY..." class="w-full px-4 py-2 bg-slate-100 rounded-xl outline-none text-sm font-medium focus:ring-2 focus:ring-blue-500">
     </header>
 
     <main class="flex-1 overflow-y-auto pb-24">
@@ -123,6 +123,19 @@
         let masterData = { keramik: [], eksternal: [], customer: [] };
         let currentUser = null;
 
+        // FUNGSI GLOBAL SEARCH (Nama, Merk, Lot, QTY)
+        document.getElementById('globalSearch').addEventListener('input', function(e) {
+            const val = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('#tableBody tr');
+            
+            rows.forEach(row => {
+                // Mengambil semua teks di dalam sel (td) baris tersebut
+                const text = row.innerText.toLowerCase();
+                // Jika salah satu kolom mengandung kata kunci, tampilkan baris
+                row.style.display = text.includes(val) ? "" : "none";
+            });
+        });
+
         function login() {
             const pass = document.getElementById('passInput').value.toLowerCase();
             if (pass === 'mnu123' || pass === 'dare123') {
@@ -157,12 +170,15 @@
             const body = document.getElementById('tableBody');
             body.innerHTML = data.map(item => `
                 <tr class="border-b active:bg-slate-50">
-                    <td class="p-4">${item.Nama || '-'}</td>
+                    <td class="p-4 font-bold">${item.Nama || '-'}</td>
                     <td class="p-4 text-slate-500">${item.Lot || '-'}</td>
                     <td class="p-4 text-[10px] uppercase">${item.Merk || '-'}</td>
                     <td class="p-4 text-blue-600 font-black">${item.QTY || 0}</td>
                 </tr>
             `).join('');
+            // Trigger search ulang setelah render data baru (jika input search terisi)
+            const currentSearch = document.getElementById('globalSearch').value;
+            if(currentSearch) document.getElementById('globalSearch').dispatchEvent(new Event('input'));
         }
 
         function updateCustomerDatalist() {
@@ -248,7 +264,6 @@
             const note = document.getElementById('orderNote').value.trim();
             if(!customer) return alert("Pilih Toko dulu!");
             
-            // Format Header
             let text = `Pesanan via Whatsapp Toko : *${customer}*\n`;
             text += `---------------\n`;
             text += `*Motif / Lot / QTY / Harga*\n`;
@@ -269,24 +284,14 @@
             
             const totalQty = document.getElementById('totalQtyDisplay').innerText;
             const totalHarga = document.getElementById('totalPriceDisplay').innerText;
-            
-            // Waktu Realtime
             const now = new Date();
-            const timestamp = now.toLocaleString('id-ID', { 
-                day: '2-digit', month: 'long', year: 'numeric', 
-                hour: '2-digit', minute: '2-digit', second: '2-digit' 
-            }).replace(/\./g, ':');
+            const timestamp = now.toLocaleString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':');
 
             text += `---------------\n`;
             text += `*Total Qty : ${totalQty}*\n`;
             text += `*Total Pesanan : ${totalHarga}*\n`;
             text += `Metode : ${shipMethod}\n`;
-            
-            // Tampilkan Note hanya jika diisi
-            if(note !== "") {
-                text += `Note : ${note}\n`;
-            }
-            
+            if(note !== "") text += `Note : ${note}\n`;
             text += `\nPekanbaru , ${timestamp}`;
             
             navigator.clipboard.writeText(text);
