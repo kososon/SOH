@@ -72,12 +72,21 @@
                 
                 <button onclick="addItemRow()" class="mt-4 w-full p-3 border-2 border-dashed border-blue-200 text-blue-600 font-black rounded-xl text-xs uppercase">+ Tambah Item</button>
                 
-                <div class="mt-8 p-5 bg-slate-900 rounded-2xl text-white text-center shadow-xl">
-                    <p class="text-2xl font-black text-green-400 mb-4" id="totalPriceDisplay">Rp 0</p>
+                <div class="mt-8 p-5 bg-slate-900 rounded-2xl text-white shadow-xl">
+                    <div class="flex justify-between items-end mb-4 px-1">
+                        <div class="text-left">
+                            <p class="text-[10px] text-slate-400 uppercase font-black">Total Item</p>
+                            <p class="text-xl font-black text-blue-400" id="totalQtyDisplay">0 Pcs</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-slate-400 uppercase font-black">Total Harga</p>
+                            <p class="text-xl font-black text-green-400" id="totalPriceDisplay">Rp 0</p>
+                        </div>
+                    </div>
                     
                     <div class="mb-4 text-left">
                         <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Note (Opsional)</label>
-                        <textarea id="orderNote" rows="2" placeholder="Contoh: Kirim besok pagi / Barang titipan..." class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-medium outline-none border border-slate-700 focus:border-blue-500 mt-1"></textarea>
+                        <textarea id="orderNote" rows="2" placeholder="Contoh: Kirim besok pagi..." class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-medium outline-none border border-slate-700 focus:border-blue-500 mt-1"></textarea>
                     </div>
 
                     <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy Pesanan</button>
@@ -104,6 +113,7 @@
         let masterData = { keramik: [], eksternal: [], customer: [] };
         let currentUser = null;
 
+        // Optimasi Search
         let searchTimeout;
         document.getElementById('globalSearch').addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
@@ -164,55 +174,12 @@
             list.innerHTML = masterData.customer.map(c => `<option value="${c['nama toko'] || c['Nama Toko'] || ''}">`).join('');
         }
 
-        async function generateOrder() {
-            const customer = document.getElementById('searchCustomer').value;
-            const note = document.getElementById('orderNote').value;
-            if(!customer) return alert("Pilih Toko dulu!");
-            
-            let text = `*PESANAN SOH*\nCustomer: *${customer}*\n------------------\n`;
-            let itemsReport = ""; 
-            let total = 0;
-            
-            document.querySelectorAll('#orderItems > div').forEach(row => {
-                const nama = row.querySelector('.item-name').value;
-                const lot = row.querySelector('.item-lot').value;
-                const qty = row.querySelector('.item-qty').value;
-                const price = row.querySelector('.item-price').value;
-                
-                if(nama && qty) {
-                    const subtotal = (parseFloat(qty) * parseFloat(price)) || 0;
-                    text += `- ${nama} (Lot ${lot}) | ${qty} x ${price}\n`;
-                    itemsReport += `${nama} (L:${lot})[${qty}]; `; 
-                    total += subtotal;
-                }
-            });
-            
-            const totalHargaStr = document.getElementById('totalPriceDisplay').innerText;
-            text += `------------------\n*Total: ${totalHargaStr}*`;
-            
-            // Tambahkan Note ke format teks jika ada
-            if(note.trim() !== "") {
-                text += `\n*Note:* ${note}`;
-            }
-            
-            navigator.clipboard.writeText(text);
-            alert("Pesanan disalin! Sedang mengirim laporan...");
-
-            try {
-                const reportData = {
-                    sales: currentUser,
-                    customer: customer,
-                    items: itemsReport + (note ? " | Note: " + note : ""),
-                    total: totalHargaStr
-                };
-
-                fetch(GOOGLE_SCRIPT_URL, {
-                    method: "POST",
-                    mode: "no-cors",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(reportData)
-                });
-            } catch (e) { console.error("Gagal lapor:", e); }
+        // Fungsi Format Ribuan saat mengetik
+        function formatCurrency(input) {
+            let val = input.value.replace(/\D/g, "");
+            if (val === "") { input.value = ""; return; }
+            input.value = new Intl.NumberFormat('id-ID').format(val);
+            calcTotal();
         }
 
         function addItemRow() {
@@ -230,7 +197,7 @@
                     <select class="item-lot p-2 rounded-lg border-2 border-white text-xs font-bold outline-none"><option value="">Pilih Lot</option></select>
                     <input type="number" oninput="calcTotal()" placeholder="QTY" class="item-qty p-2 rounded-lg border-2 border-white text-center font-black text-blue-600 outline-none">
                 </div>
-                <input type="number" oninput="calcTotal()" placeholder="Harga Satuan" class="item-price w-full p-2 rounded-lg border-2 border-white mt-2 font-bold text-sm outline-none">
+                <input type="text" oninput="formatCurrency(this)" placeholder="Harga Satuan" class="item-price w-full p-2 rounded-lg border-2 border-white mt-2 font-bold text-sm outline-none">
             `;
             container.appendChild(div);
         }
@@ -244,13 +211,63 @@
         }
 
         function calcTotal() {
-            let total = 0;
+            let totalHarga = 0;
+            let totalQty = 0;
             document.querySelectorAll('#orderItems > div').forEach(row => {
                 const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
-                const price = parseFloat(row.querySelector('.item-price').value) || 0;
-                total += (qty * price);
+                const priceRaw = row.querySelector('.item-price').value.replace(/\./g, ""); // Hapus titik format
+                const price = parseFloat(priceRaw) || 0;
+                
+                totalQty += qty;
+                totalHarga += (qty * price);
             });
-            document.getElementById('totalPriceDisplay').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(total);
+            
+            document.getElementById('totalQtyDisplay').innerText = totalQty + " Pcs";
+            document.getElementById('totalPriceDisplay').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalHarga);
+        }
+
+        async function generateOrder() {
+            const customer = document.getElementById('searchCustomer').value;
+            const note = document.getElementById('orderNote').value;
+            if(!customer) return alert("Pilih Toko dulu!");
+            
+            let text = `*PESANAN SOH*\nCustomer: *${customer}*\n------------------\n`;
+            let itemsReport = ""; 
+            
+            document.querySelectorAll('#orderItems > div').forEach(row => {
+                const nama = row.querySelector('.item-name').value;
+                const lot = row.querySelector('.item-lot').value;
+                const qty = row.querySelector('.item-qty').value;
+                const price = row.querySelector('.item-price').value;
+                
+                if(nama && qty) {
+                    text += `- ${nama} (Lot ${lot}) | ${qty} x ${price}\n`;
+                    itemsReport += `${nama} (L:${lot})[${qty}]; `; 
+                }
+            });
+            
+            const totalQtyStr = document.getElementById('totalQtyDisplay').innerText;
+            const totalHargaStr = document.getElementById('totalPriceDisplay').innerText;
+            
+            text += `------------------\n*Total Item: ${totalQtyStr}*\n*Total Harga: ${totalHargaStr}*`;
+            if(note.trim() !== "") text += `\n*Note:* ${note}`;
+            
+            navigator.clipboard.writeText(text);
+            alert("Pesanan disalin! Mengirim laporan...");
+
+            try {
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        sales: currentUser,
+                        customer: customer,
+                        items: itemsReport + (note ? " | Note: " + note : ""),
+                        total: totalHargaStr + " (" + totalQtyStr + ")"
+                    })
+                });
+            } catch (e) { console.error("Gagal lapor:", e); }
         }
 
         function showPage(p) {
@@ -260,6 +277,7 @@
             document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
         }
 
+        // Admin Save
         async function saveToGithub() {
             const token = prompt("PENGAMAN: Masukkan Token GitHub Admin:");
             if (!token) return;
