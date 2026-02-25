@@ -11,7 +11,6 @@
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #f8fafc; }
         .active-nav { color: #3b82f6; border-top: 3px solid #3b82f6; }
         .hidden { display: none !important; }
-        /* Fix tampilan warna untuk browser Android lama */
         .bg-white { background-color: #ffffff !important; }
         .bg-slate-950 { background-color: #020617 !important; }
     </style>
@@ -68,10 +67,19 @@
                 <label class="text-[10px] font-black text-slate-400 uppercase">Pilih Toko</label>
                 <input type="text" id="searchCustomer" list="customerList" placeholder="Nama Toko..." class="w-full p-3 bg-slate-50 rounded-xl mb-4 font-bold border-2 border-slate-100 outline-none focus:border-blue-500">
                 <datalist id="customerList"></datalist>
+                
                 <div id="orderItems" class="space-y-4"></div>
+                
                 <button onclick="addItemRow()" class="mt-4 w-full p-3 border-2 border-dashed border-blue-200 text-blue-600 font-black rounded-xl text-xs uppercase">+ Tambah Item</button>
+                
                 <div class="mt-8 p-5 bg-slate-900 rounded-2xl text-white text-center shadow-xl">
                     <p class="text-2xl font-black text-green-400 mb-4" id="totalPriceDisplay">Rp 0</p>
+                    
+                    <div class="mb-4 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Note (Opsional)</label>
+                        <textarea id="orderNote" rows="2" placeholder="Contoh: Kirim besok pagi / Barang titipan..." class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-medium outline-none border border-slate-700 focus:border-blue-500 mt-1"></textarea>
+                    </div>
+
                     <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy Pesanan</button>
                 </div>
             </div>
@@ -96,7 +104,6 @@
         let masterData = { keramik: [], eksternal: [], customer: [] };
         let currentUser = null;
 
-        // Optimasi Search agar tidak lemot
         let searchTimeout;
         document.getElementById('globalSearch').addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
@@ -159,6 +166,7 @@
 
         async function generateOrder() {
             const customer = document.getElementById('searchCustomer').value;
+            const note = document.getElementById('orderNote').value;
             if(!customer) return alert("Pilih Toko dulu!");
             
             let text = `*PESANAN SOH*\nCustomer: *${customer}*\n------------------\n`;
@@ -182,6 +190,11 @@
             const totalHargaStr = document.getElementById('totalPriceDisplay').innerText;
             text += `------------------\n*Total: ${totalHargaStr}*`;
             
+            // Tambahkan Note ke format teks jika ada
+            if(note.trim() !== "") {
+                text += `\n*Note:* ${note}`;
+            }
+            
             navigator.clipboard.writeText(text);
             alert("Pesanan disalin! Sedang mengirim laporan...");
 
@@ -189,7 +202,7 @@
                 const reportData = {
                     sales: currentUser,
                     customer: customer,
-                    items: itemsReport,
+                    items: itemsReport + (note ? " | Note: " + note : ""),
                     total: totalHargaStr
                 };
 
