@@ -42,7 +42,19 @@
                 <button onclick="logout()" id="btnLogout" class="hidden bg-red-50 text-red-600 px-3 py-2 rounded-lg text-[10px] font-black uppercase">Logout</button>
             </div>
         </div>
-        <input type="text" id="globalSearch" placeholder="Cari Nama, Merk, Lot, atau QTY..." class="w-full px-4 py-2 bg-slate-100 rounded-xl outline-none text-sm font-medium focus:ring-2 focus:ring-blue-500">
+        
+        <div class="space-y-2">
+            <input type="text" id="globalSearch" placeholder="Cari Merk atau Lot..." class="w-full px-4 py-2 bg-slate-100 rounded-xl outline-none text-sm font-medium focus:ring-2 focus:ring-blue-500">
+            
+            <div class="flex gap-2">
+                <input type="text" id="searchName" placeholder="Nama Barang..." class="flex-1 px-3 py-2 bg-slate-100 rounded-xl outline-none text-[11px] font-bold focus:ring-2 focus:ring-blue-500">
+                <div class="flex items-center gap-1 bg-slate-100 px-2 rounded-xl">
+                    <input type="number" id="qtyMin" placeholder="0" class="w-10 bg-transparent text-center text-[11px] font-black outline-none">
+                    <span class="text-[10px] font-bold text-slate-400">sd</span>
+                    <input type="number" id="qtyMax" placeholder="99" class="w-10 bg-transparent text-center text-[11px] font-black outline-none">
+                </div>
+            </div>
+        </div>
     </header>
 
     <main class="flex-1 overflow-y-auto pb-24">
@@ -123,17 +135,41 @@
         let masterData = { keramik: [], eksternal: [], customer: [] };
         let currentUser = null;
 
-        // FUNGSI GLOBAL SEARCH (Nama, Merk, Lot, QTY)
-        document.getElementById('globalSearch').addEventListener('input', function(e) {
-            const val = e.target.value.toLowerCase();
+        // FUNGSI SEARCH TERPADU
+        function filterData() {
+            const gSearch = document.getElementById('globalSearch').value.toLowerCase();
+            const nSearch = document.getElementById('searchName').value.toLowerCase();
+            const minQ = parseFloat(document.getElementById('qtyMin').value) || 0;
+            const maxQ = parseFloat(document.getElementById('qtyMax').value) || 999999;
+
             const rows = document.querySelectorAll('#tableBody tr');
             
             rows.forEach(row => {
-                // Mengambil semua teks di dalam sel (td) baris tersebut
-                const text = row.innerText.toLowerCase();
-                // Jika salah satu kolom mengandung kata kunci, tampilkan baris
-                row.style.display = text.includes(val) ? "" : "none";
+                const cells = row.getElementsByTagName('td');
+                if (cells.length < 4) return;
+
+                const nama = cells[0].innerText.toLowerCase();
+                const lot = cells[1].innerText.toLowerCase();
+                const merk = cells[2].innerText.toLowerCase();
+                const qty = parseFloat(cells[3].innerText) || 0;
+                const fullText = row.innerText.toLowerCase();
+
+                // Logika Filter
+                const matchGlobal = fullText.includes(gSearch);
+                const matchName = nama.includes(nSearch);
+                const matchQty = (qty >= minQ && qty <= maxQ);
+
+                if (matchGlobal && matchName && matchQty) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
             });
+        }
+
+        // Event Listeners untuk Search
+        ['globalSearch', 'searchName', 'qtyMin', 'qtyMax'].forEach(id => {
+            document.getElementById(id).addEventListener('input', filterData);
         });
 
         function login() {
@@ -176,9 +212,7 @@
                     <td class="p-4 text-blue-600 font-black">${item.QTY || 0}</td>
                 </tr>
             `).join('');
-            // Trigger search ulang setelah render data baru (jika input search terisi)
-            const currentSearch = document.getElementById('globalSearch').value;
-            if(currentSearch) document.getElementById('globalSearch').dispatchEvent(new Event('input'));
+            filterData(); // Apply filter after render
         }
 
         function updateCustomerDatalist() {
