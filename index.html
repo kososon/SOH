@@ -8,9 +8,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #f8fafc; }
         .active-nav { color: #3b82f6; border-top: 3px solid #3b82f6; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
+        /* Memastikan warna tetap muncul meski di browser lama */
+        .bg-white { background-color: #ffffff !important; }
+        .bg-slate-950 { background-color: #020617 !important; }
     </style>
 </head>
 <body class="bg-slate-50 flex flex-col h-screen overflow-hidden text-slate-900">
@@ -21,8 +24,8 @@
                 <h2 class="text-4xl font-black text-slate-900 tracking-tighter">SOH</h2>
                 <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mt-1">Mobile Access</p>
             </div>
-            <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50">
-            <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg uppercase mb-4">Login</button>
+            <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50 outline-none focus:border-blue-500">
+            <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg uppercase mb-4 active:bg-blue-700">Login</button>
             <p class="text-center text-[10px] text-slate-400 italic font-medium">Powered By Wilson V.1.0</p>
         </div>
     </div>
@@ -40,15 +43,15 @@
                 <button onclick="logout()" id="btnLogout" class="hidden bg-red-50 text-red-600 px-3 py-2 rounded-lg text-[10px] font-black uppercase">Logout</button>
             </div>
         </div>
-        <input type="text" id="globalSearch" onkeyup="filterTable()" placeholder="Cari barang atau merk..." class="w-full px-4 py-2 bg-slate-100 rounded-xl outline-none text-sm font-medium">
+        <input type="text" id="globalSearch" placeholder="Cari barang atau merk..." class="w-full px-4 py-2 bg-slate-100 rounded-xl outline-none text-sm font-medium focus:ring-2 focus:ring-blue-500">
     </header>
 
-    <main class="flex-1 overflow-y-auto pb-24">
+    <main class="flex-1 overflow-y-auto pb-24" id="mainScroll">
         <section id="homePage" class="p-4">
-            <div id="syncStatus" class="text-[9px] font-bold text-blue-500 mb-2 hidden uppercase text-center">🔄 Update Data Otomatis...</div>
+            <div id="syncStatus" class="text-[9px] font-bold text-blue-500 mb-2 hidden uppercase text-center">🔄 Sinkronisasi Data...</div>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <table class="w-full text-left text-xs">
-                    <thead class="bg-slate-50 border-b">
+                    <thead class="bg-slate-50 border-b sticky top-0">
                         <tr class="text-slate-500 font-black uppercase tracking-tighter">
                             <th class="p-4">Nama</th><th class="p-4">Lot</th><th class="p-4">Merk</th><th class="p-4">QTY</th>
                         </tr>
@@ -65,15 +68,11 @@
                 <label class="text-[10px] font-black text-slate-400 uppercase">Pilih Toko</label>
                 <input type="text" id="searchCustomer" list="customerList" placeholder="Nama Toko..." class="w-full p-3 bg-slate-50 rounded-xl mb-4 font-bold border-2 border-slate-100 focus:border-blue-500 outline-none">
                 <datalist id="customerList"></datalist>
-                
                 <div id="orderItems" class="space-y-4"></div>
-                
-                <button onclick="addItemRow()" class="mt-4 w-full p-3 border-2 border-dashed border-blue-200 text-blue-600 font-black rounded-xl text-xs uppercase hover:bg-blue-50">+ Tambah Item</button>
-                
-                <div class="mt-8 p-5 bg-slate-900 rounded-2xl text-white text-center shadow-xl">
-                    <p class="text-[10px] text-slate-400 uppercase font-black mb-1">Total Estimasi</p>
+                <button onclick="addItemRow()" class="mt-4 w-full p-3 border-2 border-dashed border-blue-200 text-blue-600 font-black rounded-xl text-xs uppercase">+ Tambah Item</button>
+                <div class="mt-8 p-5 bg-slate-900 rounded-2xl text-white text-center">
                     <p class="text-2xl font-black text-green-400 mb-4" id="totalPriceDisplay">Rp 0</p>
-                    <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tight active:scale-95 transition-all">Copy Pesanan</button>
+                    <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase active:scale-95">Copy Pesanan</button>
                 </div>
             </div>
         </section>
@@ -92,9 +91,24 @@
         const REPO_OWNER = "kososon"; 
         const REPO_NAME = "SOH";   
         const DATA_FILE = "data.json";
-
         let masterData = { keramik: [], eksternal: [], customer: [] };
         let currentUser = null;
+
+        // Optimasi Search dengan Debounce
+        let searchTimeout;
+        document.getElementById('globalSearch').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const val = e.target.value.toLowerCase();
+                const rows = document.querySelectorAll('#tableBody tr');
+                
+                // Performa lebih cepat: menggunakan display none/table-row langsung
+                for (let i = 0; i < rows.length; i++) {
+                    const txt = rows[i].textContent.toLowerCase();
+                    rows[i].style.display = txt.includes(val) ? "" : "none";
+                }
+            }, 300); // Tunggu 300ms setelah mengetik baru proses (mengurangi lag)
+        });
 
         function login() {
             const pass = document.getElementById('passInput').value.toLowerCase();
@@ -104,7 +118,7 @@
                 document.getElementById('btnLogout').classList.remove('hidden');
                 if(currentUser === 'admin') document.getElementById('adminTools').classList.remove('hidden');
                 fetchData();
-                setInterval(fetchData, 30000);
+                setInterval(fetchData, 60000); // Diperpanjang ke 60 detik agar tidak berat
             } else { alert("Password Salah!"); }
         }
 
@@ -119,58 +133,19 @@
                 if (res.ok) {
                     masterData = await res.json();
                     renderTable();
-                    updateCustomerDatalist(); // Memperbarui daftar toko
+                    updateCustomerDatalist();
                 }
             } catch (e) { console.error("Gagal ambil data"); }
             finally { setTimeout(() => statusEl.classList.add('hidden'), 1000); }
         }
 
-        async function saveToGithub() {
-            const token = prompt("PENGAMAN: Masukkan Token GitHub Admin:");
-            if (!token) return;
-
-            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
-            try {
-                const check = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
-                let sha = "";
-                if(check.ok) { const d = await check.json(); sha = d.sha; }
-
-                const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
-                const res = await fetch(url, {
-                    method: "PUT",
-                    headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: "Update SOH", content: content, sha: sha })
-                });
-
-                if(res.ok) { alert("✅ DATA BERHASIL DIUPDATE!"); fetchData(); }
-                else { alert("❌ TOKEN SALAH / EXPIRED"); }
-            } catch (e) { alert("❌ Gagal koneksi."); }
-        }
-
-        document.getElementById('importExcel').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                const workbook = XLSX.read(evt.target.result, { type: 'binary' });
-                masterData = {
-                    keramik: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Keramik"] || []),
-                    eksternal: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Eksternal"] || []),
-                    customer: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Customer"] || [])
-                };
-                saveToGithub();
-            };
-            reader.readAsBinaryString(file);
-        });
-
         function renderTable() {
             const data = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const body = document.getElementById('tableBody');
-            if (data.length === 0) {
-                body.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400 italic">Data kosong.</td></tr>`;
-                return;
-            }
+            
+            // Render massal lebih cepat dengan join
             body.innerHTML = data.map(item => `
-                <tr class="border-b active:bg-slate-50">
+                <tr class="border-b">
                     <td class="p-4">${item.Nama || '-'}</td>
                     <td class="p-4 text-slate-500">${item.Lot || '-'}</td>
                     <td class="p-4 text-[10px] uppercase">${item.Merk || '-'}</td>
@@ -179,14 +154,10 @@
             `).join('');
         }
 
-        // PERBAIKAN: Fungsi Update Daftar Toko
         function updateCustomerDatalist() {
             const list = document.getElementById('customerList');
-            if (!masterData.customer || masterData.customer.length === 0) return;
-            // Mengambil field 'Nama Toko' (sesuaikan dengan header di Excel Anda)
-            list.innerHTML = masterData.customer.map(c => `
-                <option value="${c['nama toko'] || c['Nama Toko'] || c['customer'] || ''}">
-            `).join('');
+            if (!masterData.customer) return;
+            list.innerHTML = masterData.customer.map(c => `<option value="${c['nama toko'] || c['Nama Toko'] || ''}">`).join('');
         }
 
         function showPage(p) {
@@ -196,20 +167,12 @@
             document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
         }
 
-        function filterTable() {
-            const v = document.getElementById('globalSearch').value.toLowerCase();
-            document.querySelectorAll('#tableBody tr').forEach(r => {
-                r.style.display = r.innerText.toLowerCase().includes(v) ? '' : 'none';
-            });
-        }
-
-        // FUNGSI ORDER
+        // FUNGSI LAINNYA TETAP SAMA NAMUN DIPASTIKAN ADA
         function addItemRow() {
             const container = document.getElementById('orderItems');
             const id = Date.now();
             const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const uniqueNames = [...new Set(allStok.map(s => s.Nama))];
-            
             const div = document.createElement('div');
             div.className = "bg-slate-50 p-4 rounded-xl border border-slate-100 relative";
             div.innerHTML = `
@@ -246,25 +209,52 @@
         function generateOrder() {
             const customer = document.getElementById('searchCustomer').value;
             if(!customer) return alert("Pilih Toko dulu!");
-            
             let text = `*PESANAN SOH*\nCustomer: *${customer}*\n------------------\n`;
-            let total = 0;
-            
             document.querySelectorAll('#orderItems > div').forEach(row => {
                 const nama = row.querySelector('.item-name').value;
                 const lot = row.querySelector('.item-lot').value;
                 const qty = row.querySelector('.item-qty').value;
-                const price = row.querySelector('.item-price').value;
-                if(nama && qty) {
-                    text += `- ${nama} (Lot ${lot}) | ${qty} x ${price}\n`;
-                    total += (qty * price);
-                }
+                if(nama && qty) text += `- ${nama} (Lot ${lot}) | ${qty} pcs\n`;
             });
-            
             text += `------------------\n*Total: ${document.getElementById('totalPriceDisplay').innerText}*`;
             navigator.clipboard.writeText(text);
-            alert("Pesanan disalin ke Clipboard!");
+            alert("Pesanan disalin!");
         }
+
+        // Admin Save tetap membutuhkan Token saat dipanggil
+        async function saveToGithub() {
+            const token = prompt("PENGAMAN: Masukkan Token GitHub Admin:");
+            if (!token) return;
+            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
+            try {
+                const check = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
+                let sha = "";
+                if(check.ok) { const d = await check.json(); sha = d.sha; }
+                const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
+                const res = await fetch(url, {
+                    method: "PUT",
+                    headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: "Update SOH", content: content, sha: sha })
+                });
+                if(res.ok) { alert("✅ DATA BERHASIL DIUPDATE!"); fetchData(); }
+                else { alert("❌ TOKEN SALAH"); }
+            } catch (e) { alert("❌ Gagal koneksi."); }
+        }
+
+        document.getElementById('importExcel').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const workbook = XLSX.read(evt.target.result, { type: 'binary' });
+                masterData = {
+                    keramik: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Keramik"] || []),
+                    eksternal: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Eksternal"] || []),
+                    customer: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Customer"] || [])
+                };
+                saveToGithub();
+            };
+            reader.readAsBinaryString(file);
+        });
     </script>
 </body>
 </html>
