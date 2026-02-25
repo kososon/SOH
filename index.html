@@ -84,6 +84,16 @@
                         </div>
                     </div>
                     
+                    <div class="mb-3 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Metode Pengiriman</label>
+                        <select id="shipMethod" class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold outline-none border border-slate-700 focus:border-blue-500 mt-1">
+                            <option value="Antar Toko">Antar Toko</option>
+                            <option value="Antar Alamat">Antar Alamat</option>
+                            <option value="Ambil Sendiri (Amsen)">Ambil Sendiri (Amsen)</option>
+                            <option value="Tunggu Konfirmasi">Tunggu Konfirmasi</option>
+                        </select>
+                    </div>
+
                     <div class="mb-4 text-left">
                         <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Note (Opsional)</label>
                         <textarea id="orderNote" rows="2" placeholder="Contoh: Kirim besok pagi..." class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-medium outline-none border border-slate-700 focus:border-blue-500 mt-1"></textarea>
@@ -112,18 +122,6 @@
 
         let masterData = { keramik: [], eksternal: [], customer: [] };
         let currentUser = null;
-
-        let searchTimeout;
-        document.getElementById('globalSearch').addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                const val = e.target.value.toLowerCase();
-                const rows = document.querySelectorAll('#tableBody tr');
-                rows.forEach(row => {
-                    row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none";
-                });
-            }, 300); 
-        });
 
         function login() {
             const pass = document.getElementById('passInput').value.toLowerCase();
@@ -191,7 +189,7 @@
             if (dataBarang) {
                 const stokTersedia = parseFloat(dataBarang.QTY) || 0;
                 if (qtyInput > stokTersedia) {
-                    alert(`⚠️ Stok tidak cukup!\nBarang: ${namaBarang}\nLot: ${lotTerpilih}\nStok Tersedia: ${stokTersedia}`);
+                    alert(`⚠️ Stok tidak cukup!\nStok Tersedia: ${stokTersedia}`);
                     input.value = stokTersedia;
                 }
             }
@@ -246,13 +244,14 @@
 
         async function generateOrder() {
             const customer = document.getElementById('searchCustomer').value;
-            const note = document.getElementById('orderNote').value || "-";
+            const shipMethod = document.getElementById('shipMethod').value;
+            const note = document.getElementById('orderNote').value.trim();
             if(!customer) return alert("Pilih Toko dulu!");
             
-            // Format Pesanan Sesuai Permintaan
+            // Format Header
             let text = `Pesanan via Whatsapp Toko : *${customer}*\n`;
             text += `---------------\n`;
-            text += `Motif / Lot / QTY / Harga\n`;
+            text += `*Motif / Lot / QTY / Harga*\n`;
             
             let itemsReport = ""; 
             
@@ -268,8 +267,8 @@
                 }
             });
             
-            const totalQtyStr = document.getElementById('totalQtyDisplay').innerText;
-            const totalHargaStr = document.getElementById('totalPriceDisplay').innerText;
+            const totalQty = document.getElementById('totalQtyDisplay').innerText;
+            const totalHarga = document.getElementById('totalPriceDisplay').innerText;
             
             // Waktu Realtime
             const now = new Date();
@@ -278,11 +277,17 @@
                 hour: '2-digit', minute: '2-digit', second: '2-digit' 
             }).replace(/\./g, ':');
 
-            text += `\n---------------\n`;
-            text += `Total Qty : ${totalQtyStr}\n`;
-            text += `Total Pesanan : ${totalHargaStr}\n`;
-            text += `Note : ${note}\n\n`;
-            text += `Pekanbaru , ${timestamp}`;
+            text += `---------------\n`;
+            text += `*Total Qty : ${totalQty}*\n`;
+            text += `*Total Pesanan : ${totalHarga}*\n`;
+            text += `Metode : ${shipMethod}\n`;
+            
+            // Tampilkan Note hanya jika diisi
+            if(note !== "") {
+                text += `Note : ${note}\n`;
+            }
+            
+            text += `\nPekanbaru , ${timestamp}`;
             
             navigator.clipboard.writeText(text);
             alert("Pesanan disalin! Mengirim laporan...");
@@ -295,8 +300,8 @@
                     body: JSON.stringify({
                         sales: currentUser,
                         customer: customer,
-                        items: itemsReport + (note !== "-" ? " | Note: " + note : ""),
-                        total: totalHargaStr + " (" + totalQtyStr + ")"
+                        items: itemsReport + (note ? " | Note: " + note : ""),
+                        total: totalHarga + " (" + totalQty + ") [" + shipMethod + "]"
                     })
                 });
             } catch (e) { console.error("Gagal lapor:", e); }
@@ -308,40 +313,6 @@
             document.getElementById('btn-home').classList.toggle('active-nav', p === 'home');
             document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
         }
-
-        async function saveToGithub() {
-            const token = prompt("PENGAMAN: Masukkan Token GitHub Admin:");
-            if (!token) return;
-            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
-            try {
-                const check = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
-                let sha = "";
-                if(check.ok) { const d = await check.json(); sha = d.sha; }
-                const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
-                const res = await fetch(url, {
-                    method: "PUT",
-                    headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: "Update SOH", content: content, sha: sha })
-                });
-                if(res.ok) { alert("✅ DATA BERHASIL DIUPDATE!"); fetchData(); }
-                else { alert("❌ TOKEN SALAH"); }
-            } catch (e) { alert("❌ Gagal koneksi."); }
-        }
-
-        document.getElementById('importExcel').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                const workbook = XLSX.read(evt.target.result, { type: 'binary' });
-                masterData = {
-                    keramik: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Keramik"] || []),
-                    eksternal: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Eksternal"] || []),
-                    customer: XLSX.utils.sheet_to_json(workbook.Sheets["Data_Customer"] || [])
-                };
-                saveToGithub();
-            };
-            reader.readAsBinaryString(file);
-        });
     </script>
 </body>
 </html>
