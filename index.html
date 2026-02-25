@@ -18,7 +18,7 @@
 <body class="bg-slate-50 flex flex-col h-screen overflow-hidden text-slate-900">
 
     <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-sm">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm">
             <div class="text-center mb-6">
                 <h2 class="text-4xl font-black text-slate-900 tracking-tighter">SOH</h2>
                 <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mt-1">Mobile Access</p>
@@ -113,7 +113,6 @@
         let masterData = { keramik: [], eksternal: [], customer: [] };
         let currentUser = null;
 
-        // Optimasi Search
         let searchTimeout;
         document.getElementById('globalSearch').addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
@@ -181,24 +180,19 @@
             calcTotal();
         }
 
-        // FUNGSI VALIDASI QTY
         function validateQty(input) {
             const row = input.parentElement.parentElement;
             const namaBarang = row.querySelector('.item-name').value;
             const lotTerpilih = row.querySelector('.item-lot').value;
             const qtyInput = parseFloat(input.value) || 0;
-
             if (!namaBarang || !lotTerpilih) return;
-
-            // Cari stok di database
             const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const dataBarang = allStok.find(s => s.Nama === namaBarang && s.Lot === lotTerpilih);
-
             if (dataBarang) {
                 const stokTersedia = parseFloat(dataBarang.QTY) || 0;
                 if (qtyInput > stokTersedia) {
                     alert(`⚠️ Stok tidak cukup!\nBarang: ${namaBarang}\nLot: ${lotTerpilih}\nStok Tersedia: ${stokTersedia}`);
-                    input.value = stokTersedia; // Reset ke maksimal stok
+                    input.value = stokTersedia;
                 }
             }
             calcTotal();
@@ -232,10 +226,7 @@
             const qtyInput = row.querySelector('.item-qty');
             const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const filtered = allStok.filter(s => s.Nama === input.value);
-            
             lotSelect.innerHTML = '<option value="">Pilih Lot</option>' + filtered.map(f => `<option value="${f.Lot}">${f.Lot} (Sisa: ${f.QTY})</option>`).join('');
-            
-            // Validasi ulang jika ganti barang tapi QTY sudah terisi
             if(qtyInput.value) validateQty(qtyInput);
         }
 
@@ -246,40 +237,52 @@
                 const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
                 const priceRaw = row.querySelector('.item-price').value.replace(/\./g, "");
                 const price = parseFloat(priceRaw) || 0;
-                
                 totalQty += qty;
                 totalHarga += (qty * price);
             });
-            
             document.getElementById('totalQtyDisplay').innerText = totalQty + " Pcs";
             document.getElementById('totalPriceDisplay').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalHarga);
         }
 
         async function generateOrder() {
             const customer = document.getElementById('searchCustomer').value;
-            const note = document.getElementById('orderNote').value;
+            const note = document.getElementById('orderNote').value || "-";
             if(!customer) return alert("Pilih Toko dulu!");
             
-            let text = `*PESANAN SOH*\nCustomer: *${customer}*\n------------------\n`;
+            // Format Pesanan Sesuai Permintaan
+            let text = `Pesanan via Whatsapp Toko : *${customer}*\n`;
+            text += `---------------\n`;
+            text += `Motif / Lot / QTY / Harga\n`;
+            
             let itemsReport = ""; 
             
             document.querySelectorAll('#orderItems > div').forEach(row => {
-                const nama = row.querySelector('.item-name').value;
+                const motif = row.querySelector('.item-name').value;
                 const lot = row.querySelector('.item-lot').value;
                 const qty = row.querySelector('.item-qty').value;
-                const price = row.querySelector('.item-price').value;
+                const harga = row.querySelector('.item-price').value;
                 
-                if(nama && qty) {
-                    text += `- ${nama} (Lot ${lot}) | ${qty} x ${price}\n`;
-                    itemsReport += `${nama} (L:${lot})[${qty}]; `; 
+                if(motif && qty) {
+                    text += `${motif} / ${lot} / ${qty} / Rp ${harga}\n`;
+                    itemsReport += `${motif} (L:${lot})[${qty}]; `; 
                 }
             });
             
             const totalQtyStr = document.getElementById('totalQtyDisplay').innerText;
             const totalHargaStr = document.getElementById('totalPriceDisplay').innerText;
             
-            text += `------------------\n*Total Item: ${totalQtyStr}*\n*Total Harga: ${totalHargaStr}*`;
-            if(note.trim() !== "") text += `\n*Note:* ${note}`;
+            // Waktu Realtime
+            const now = new Date();
+            const timestamp = now.toLocaleString('id-ID', { 
+                day: '2-digit', month: 'long', year: 'numeric', 
+                hour: '2-digit', minute: '2-digit', second: '2-digit' 
+            }).replace(/\./g, ':');
+
+            text += `\n---------------\n`;
+            text += `Total Qty : ${totalQtyStr}\n`;
+            text += `Total Pesanan : ${totalHargaStr}\n`;
+            text += `Note : ${note}\n\n`;
+            text += `Pekanbaru , ${timestamp}`;
             
             navigator.clipboard.writeText(text);
             alert("Pesanan disalin! Mengirim laporan...");
@@ -292,7 +295,7 @@
                     body: JSON.stringify({
                         sales: currentUser,
                         customer: customer,
-                        items: itemsReport + (note ? " | Note: " + note : ""),
+                        items: itemsReport + (note !== "-" ? " | Note: " + note : ""),
                         total: totalHargaStr + " (" + totalQtyStr + ")"
                     })
                 });
