@@ -21,7 +21,7 @@
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm">
             <div class="text-center mb-6">
                 <h2 class="text-4xl font-black text-slate-900 tracking-tighter">SOH</h2>
-                <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mt-1">Mobile Acces - MNU Pekanbaru</p>
+                <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mt-1">Mobile Access - MNU Pekanbaru</p>
             </div>
             <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50 outline-none focus:border-blue-500">
             <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg uppercase mb-4 active:scale-95 transition-all">Login</button>
@@ -176,8 +176,8 @@
                 'ARI123': 'Arifin',
                 'MAU123': 'Maulana',
                 'RIK123': 'Riki Yolanda',
-                'AZH123': 'Azhar'
-                'RIF123': 'Rifky'
+                'AZH123': 'Azhar',
+                'RIF123': 'Rifky' // User baru ditambahkan di sini
             };
 
             if (users[pass]) {
@@ -349,7 +349,7 @@
                     mode: "no-cors",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        sales: currentUser, // Nilai ini sekarang berisi nama Sales asli (Arifin/Maulana/dst)
+                        sales: currentUser,
                         customer: customer,
                         items: itemsReport + (note ? " | Note: " + note : ""),
                         total: totalHarga + " (" + totalQty + ") [" + shipMethod + "]"
@@ -367,5 +367,3 @@
     </script>
 </body>
 </html>
-
-
