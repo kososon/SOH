@@ -94,7 +94,7 @@
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Note (Catatan)</label>
                     <textarea id="orderNote" placeholder="Tambahkan catatan pesanan..." class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 mb-4 outline-none resize-none h-20"></textarea>
 
-                    <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy Pesanan & Link</button>
+                    <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy Pesanan & Simpan</button>
                 </div>
             </div>
         </section>
@@ -109,8 +109,7 @@
         const REPO_OWNER = "kososon"; 
         const REPO_NAME = "SOH";   
         const DATA_FILE = "data.json";
-        // GANTI INI DENGAN LINK GOOGLE FORM ANDA (Pre-filled link lebih baik)
-        const SPREADSHEET_FORM_URL = "https://docs.google.com/forms/u/0/"; 
+        const SPREADSHEET_URL = "https://script.google.com/macros/s/AKfycbx0-vc0hN7QMMIJ6GdpI0Z_0jkCKC5t6TMqt_wJgww6ZQwphl-HySTIsMoTS7KHyvj2/exec"; 
 
         let masterData = { keramik: [], eksternal: [], customer: [] };
 
@@ -240,7 +239,6 @@
             document.getElementById('totalPriceDisplay').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalHarga);
         }
 
-        // FUNGSI GENERATE PESANAN DENGAN FORMAT BARU
         function generateOrder() {
             const customer = document.getElementById('searchCustomer').value;
             const note = document.getElementById('orderNote').value;
@@ -249,7 +247,14 @@
             
             if(!customer) return alert("Pilih Toko!");
             
-            let text = `Pesanan Toko: *${customer}*\n---------------\n*Item / Lot / Qty / Harga*\n`;
+            // Generate Timestamp Realtime
+            const now = new Date();
+            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const dateStr = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            const timestamp = `Pekanbaru, ${dateStr} jam ${timeStr}`;
+
+            let text = `Pesanan Via Whatsapp Toko: *${customer}*\n---------------\n*Item / Lot / Qty / Harga*\n`;
             
             document.querySelectorAll('#orderItems > div').forEach(row => {
                 const motif = row.querySelector('.item-name').value;
@@ -263,18 +268,15 @@
             text += `Total QTY : *${totalQtyText}*\n`;
             text += `Total Harga : *${totalPriceText}*\n`;
             text += `Metode : ${document.getElementById('shipMethod').value}\n`;
+            if(note) text += `Note: _${note}_\n`;
+            text += `---------------\n`;
+            text += `_${timestamp}_`;
             
-            if(note) text += `Note: _${note}_`;
-            
-            // Copy ke Clipboard
             navigator.clipboard.writeText(text);
-            
-            // ALERT & LINK KE SPREADSHEET (GOOGLE FORM)
             alert("Pesanan Disalin! Mengalihkan ke Spreadsheet...");
-            window.open(SPREADSHEET_FORM_URL, "_blank");
+            window.open(SPREADSHEET_URL, "_blank");
         }
 
-        // IMPORT & SYNC
         document.getElementById('importExcel').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const reader = new FileReader();
