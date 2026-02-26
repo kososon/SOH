@@ -18,7 +18,7 @@
 
     <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH</h2>
+            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH - MNU Pekanbaru</h2>
             <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50 outline-none focus:border-blue-500">
             <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Login</button>
         </div>
@@ -88,7 +88,7 @@
                         <option value="Tunggu Konfirmasi">Tunggu Konfirmasi</option>
                     </select>
                     <textarea id="orderNote" placeholder="Catatan..." class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 mb-4 outline-none h-20"></textarea>
-                    <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy & Simpan Report</button>
+                    <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Generete</button>
                     <p id="sendInfo" class="text-[9px] text-center mt-2 text-slate-400 hidden uppercase font-bold">Mengirim ke Spreadsheet...</p>
                 </div>
             </div>
@@ -111,7 +111,7 @@
 
         function login() {
             const pass = document.getElementById('passInput').value.toUpperCase();
-            const users = { 'TEAM123': 'admin', 'ARI123': 'Arifin', 'MAU123': 'Maulana', 'RIK123': 'Riki Yolanda', 'AZH123': 'Azhar', 'RIF123': 'Rifky' };
+            const users = { 'TEAM123': 'admin', 'ARI123': 'Arifin', 'MAU123': 'Maulana', 'RIK123': 'Riki Yolanda', 'AZH123': 'Azhar', 'RIF123': 'Rifky', 'RIY123': 'Riyanto', 'WIL123': 'William' };
             if (users[pass]) {
                 currentSales = users[pass];
                 document.getElementById('loginPage').classList.add('hidden');
@@ -322,7 +322,7 @@
             const timestamp = `Pekanbaru, ${now.getDate()} Feb ${now.getFullYear()} jam ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
             let itemsArray = [];
-            let textWA = `Pesanan Toko: *${customer}*\n---------------\n*Item / Lot / Qty / Harga*\n`;
+            let textWA = `Pesanan Via Whatsapp Toko: *${customer}*\n---------------\n*Item / Lot / Qty / Harga*\n`;
             document.querySelectorAll('#orderItems > div').forEach(row => {
                 const motif = row.querySelector('.item-name').value;
                 const lot = row.querySelector('.item-lot').value;
@@ -343,7 +343,7 @@
             const payload = { sales: currentSales, customer: customer, items: itemsArray.join(", "), total: totalPriceText };
             try {
                 await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                alert("Berhasil dicopy & simpan ke Spreadsheet.");
+                alert("Berhasil Generete.");
             } catch (err) { alert("Error Spreadsheet"); }
             finally { document.getElementById('sendInfo').classList.add('hidden'); }
         }
@@ -357,3 +357,4 @@
     </script>
 </body>
 </html>
+
