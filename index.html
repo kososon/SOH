@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SOH Mobile</title>
+    <title>SOH Mobile MNU Pekanbaru</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -18,7 +18,7 @@
 
     <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH Mobile - MNU Pekanbaru</h2>
+            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH</h2>
             <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50 outline-none focus:border-blue-500">
             <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Login</button>
         </div>
@@ -26,7 +26,7 @@
 
     <header class="bg-white border-b p-4 shadow-sm z-10">
         <div class="flex items-center justify-between mb-3">
-            <h1 class="text-2xl font-black text-blue-600 tracking-tighter">SOH Mobile</h1>
+            <h1 class="text-2xl font-black text-blue-600 tracking-tighter">SOH</h1>
             <div id="adminTools" class="hidden flex gap-1">
                 <button onclick="setNewToken()" class="bg-slate-200 text-slate-700 px-2 py-2 rounded-lg text-[9px] font-black uppercase">Token</button>
                 <button onclick="clearData()" class="bg-red-600 text-white px-2 py-2 rounded-lg text-[9px] font-black uppercase">Hapus</button>
@@ -82,12 +82,19 @@
                         <div><p class="text-[10px] text-slate-400 uppercase font-black">Total Item</p><p class="text-xl font-black text-blue-400" id="totalQtyDisplay">0 Pcs</p></div>
                         <div class="text-right"><p class="text-[10px] text-slate-400 uppercase font-black">Total Harga</p><p class="text-xl font-black text-green-400" id="totalPriceDisplay">Rp 0</p></div>
                     </div>
+
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Metode Pengiriman</label>
                     <select id="shipMethod" class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 mb-3 outline-none">
                         <option value="Antar Toko">Antar Toko</option>
-                        <option value="Ambil Sendiri (Amsen)">Ambil Sendiri (Amsen)</option>
+                        <option value="Antar Alamat">Antar Alamat</option>
+                        <option value="Ambil Sendiri / Amsen">Ambil Sendiri / Amsen</option>
+                        <option value="Tunggu Konfirmasi">Tunggu Konfirmasi</option>
                     </select>
-                    <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy Pesanan</button>
+
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Note (Catatan)</label>
+                    <textarea id="orderNote" placeholder="Tambahkan catatan pesanan..." class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 mb-4 outline-none resize-none h-20"></textarea>
+
+                    <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy Pesanan & Link</button>
                 </div>
             </div>
         </section>
@@ -102,6 +109,9 @@
         const REPO_OWNER = "kososon"; 
         const REPO_NAME = "SOH";   
         const DATA_FILE = "data.json";
+        // GANTI INI DENGAN LINK GOOGLE FORM ANDA (Pre-filled link lebih baik)
+        const SPREADSHEET_FORM_URL = "https://docs.google.com/forms/u/0/"; 
+
         let masterData = { keramik: [], eksternal: [], customer: [] };
 
         function login() {
@@ -182,7 +192,6 @@
             const id = Date.now();
             const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const uniqueNames = [...new Set(allStok.map(s => s.Nama))];
-            
             const div = document.createElement('div');
             div.className = "bg-slate-50 p-4 rounded-xl border border-slate-100 relative shadow-sm";
             div.innerHTML = `
@@ -212,36 +221,36 @@
             calcTotal();
         }
 
-        // FUNGSI VALIDASI STOK (DIKEMBALIKAN)
         function calcTotal() {
             let totalHarga = 0, totalQty = 0;
             document.querySelectorAll('#orderItems > div').forEach(row => {
                 const qtyInput = row.querySelector('.item-qty');
                 const lotSelect = row.querySelector('.item-lot');
                 const selectedOption = lotSelect.options[lotSelect.selectedIndex];
-                
                 let qty = parseFloat(qtyInput.value) || 0;
                 const maxStok = selectedOption ? parseFloat(selectedOption.getAttribute('data-max')) : 999999;
-
-                // Validasi: Jika melebihi stok
                 if (qty > maxStok) {
-                    alert(`Stok tidak cukup! Maksimal stok untuk Lot ini adalah ${maxStok}`);
-                    qty = maxStok;
-                    qtyInput.value = maxStok;
+                    alert(`Stok tidak cukup! Maksimal: ${maxStok}`);
+                    qty = maxStok; qtyInput.value = maxStok;
                 }
-
                 const price = parseFloat(row.querySelector('.item-price').value.replace(/\./g, "")) || 0;
-                totalQty += qty;
-                totalHarga += (qty * price);
+                totalQty += qty; totalHarga += (qty * price);
             });
             document.getElementById('totalQtyDisplay').innerText = totalQty + " Pcs";
             document.getElementById('totalPriceDisplay').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalHarga);
         }
 
+        // FUNGSI GENERATE PESANAN DENGAN FORMAT BARU
         function generateOrder() {
             const customer = document.getElementById('searchCustomer').value;
+            const note = document.getElementById('orderNote').value;
+            const totalQtyText = document.getElementById('totalQtyDisplay').innerText;
+            const totalPriceText = document.getElementById('totalPriceDisplay').innerText;
+            
             if(!customer) return alert("Pilih Toko!");
+            
             let text = `Pesanan Toko: *${customer}*\n---------------\n*Item / Lot / Qty / Harga*\n`;
+            
             document.querySelectorAll('#orderItems > div').forEach(row => {
                 const motif = row.querySelector('.item-name').value;
                 const lot = row.querySelector('.item-lot').value;
@@ -249,10 +258,23 @@
                 const harga = row.querySelector('.item-price').value;
                 if(motif && qty) text += `${motif} / ${lot} / ${qty} / Rp ${harga}\n`;
             });
-            text += `---------------\n*Total: ${document.getElementById('totalPriceDisplay').innerText}*\nMetode: ${document.getElementById('shipMethod').value}`;
-            navigator.clipboard.writeText(text); alert("Pesanan Disalin!");
+            
+            text += `---------------\n`;
+            text += `Total QTY : *${totalQtyText}*\n`;
+            text += `Total Harga : *${totalPriceText}*\n`;
+            text += `Metode : ${document.getElementById('shipMethod').value}\n`;
+            
+            if(note) text += `Note: _${note}_`;
+            
+            // Copy ke Clipboard
+            navigator.clipboard.writeText(text);
+            
+            // ALERT & LINK KE SPREADSHEET (GOOGLE FORM)
+            alert("Pesanan Disalin! Mengalihkan ke Spreadsheet...");
+            window.open(SPREADSHEET_FORM_URL, "_blank");
         }
 
+        // IMPORT & SYNC
         document.getElementById('importExcel').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const reader = new FileReader();
@@ -302,4 +324,3 @@
     </script>
 </body>
 </html>
-
