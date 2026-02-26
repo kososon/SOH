@@ -18,7 +18,7 @@
 
     <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH Mobile - MNU Pekanbaru</h2>
+            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH</h2>
             <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50 outline-none focus:border-blue-500">
             <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Login</button>
         </div>
@@ -73,10 +73,8 @@
                 <label class="text-[10px] font-black text-slate-400 uppercase">Pilih Toko</label>
                 <input type="text" id="searchCustomer" list="customerList" placeholder="Cari Nama Toko..." class="w-full p-3 bg-slate-50 rounded-xl mb-4 font-bold border-2 border-slate-100 outline-none focus:border-blue-500">
                 <datalist id="customerList"></datalist>
-                
                 <div id="orderItems" class="space-y-4"></div>
                 <button onclick="addItemRow()" class="mt-4 w-full p-3 border-2 border-dashed border-blue-200 text-blue-600 font-black rounded-xl text-xs uppercase">+ Tambah Item</button>
-                
                 <div class="mt-8 p-5 bg-slate-900 rounded-2xl text-white shadow-xl">
                     <div class="flex justify-between items-end mb-4 px-1">
                         <div><p class="text-[10px] text-slate-400 uppercase font-black">Total Item</p><p class="text-xl font-black text-blue-400" id="totalQtyDisplay">0 Pcs</p></div>
@@ -89,9 +87,7 @@
                         <option value="Ambil Sendiri / Amsen">Ambil Sendiri / Amsen</option>
                         <option value="Tunggu Konfirmasi">Tunggu Konfirmasi</option>
                     </select>
-                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Note (Catatan)</label>
                     <textarea id="orderNote" placeholder="Catatan..." class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 mb-4 outline-none h-20"></textarea>
-                    
                     <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy & Simpan Report</button>
                     <p id="sendInfo" class="text-[9px] text-center mt-2 text-slate-400 hidden uppercase font-bold">Mengirim ke Spreadsheet...</p>
                 </div>
@@ -136,7 +132,12 @@
                 const url = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/${DATA_FILE}?nocache=${new Date().getTime()}`;
                 const res = await fetch(url);
                 if (res.ok) {
-                    masterData = await res.json();
+                    const json = await res.json();
+                    masterData = {
+                        keramik: json.keramik || [],
+                        eksternal: json.eksternal || [],
+                        customer: json.customer || []
+                    };
                     renderTable();
                     updateCustomerDatalist();
                 }
@@ -144,27 +145,27 @@
         }
 
         function renderTable() {
-            const data = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
+            const data = [...masterData.keramik, ...masterData.eksternal];
             const body = document.getElementById('tableBody');
             
             if (data.length === 0) {
-                body.innerHTML = '<tr><td colspan="5" class="p-10 text-center italic text-slate-400">Data Kosong. Silahkan Import Excel.</td></tr>';
+                body.innerHTML = '<tr><td colspan="5" class="p-10 text-center italic text-slate-400">Data Kosong. Silahkan Import.</td></tr>';
                 return;
             }
 
             body.innerHTML = data.map(item => {
-                const nama = item.Nama || item.nama || '-';
-                const lot = item.Lot || item.lot || '-';
-                const merk = item.Merk || item.merk || '-';
-                const ukuran = item.Ukuran || item.ukuran || '-';
-                const qty = item.QTY || item.qty || 0;
+                // Mencari properti dengan mengabaikan besar kecil huruf dan spasi
+                const getVal = (obj, key) => {
+                    const foundKey = Object.keys(obj).find(k => k.toLowerCase().trim() === key.toLowerCase());
+                    return foundKey ? obj[foundKey] : '-';
+                };
 
                 return `<tr class="border-b">
-                    <td class="p-4 font-bold">${nama}</td>
-                    <td class="p-4 text-slate-500">${lot}</td>
-                    <td class="p-4 text-[10px] uppercase">${merk}</td>
-                    <td class="p-4 text-[10px] text-slate-400">${ukuran}</td>
-                    <td class="p-4 text-blue-600 font-black">${qty}</td>
+                    <td class="p-4 font-bold">${getVal(item, 'nama')}</td>
+                    <td class="p-4 text-slate-500">${getVal(item, 'lot')}</td>
+                    <td class="p-4 text-[10px] uppercase">${getVal(item, 'merk')}</td>
+                    <td class="p-4 text-[10px] text-slate-400">${getVal(item, 'ukuran')}</td>
+                    <td class="p-4 text-blue-600 font-black">${getVal(item, 'qty')}</td>
                 </tr>`
             }).join('');
             filterData();
@@ -194,19 +195,17 @@
 
         function updateCustomerDatalist() {
             const list = document.getElementById('customerList');
-            if (masterData.customer) {
-                list.innerHTML = masterData.customer.map(c => {
-                    const namaToko = c['Nama Toko'] || c['nama toko'] || '';
-                    return `<option value="${namaToko}">`;
-                }).join('');
-            }
+            list.innerHTML = masterData.customer.map(c => {
+                const nama = c['Nama Toko'] || c['nama toko'] || c['NAMA TOKO'] || '';
+                return `<option value="${nama}">`;
+            }).join('');
         }
 
         function addItemRow() {
             const container = document.getElementById('orderItems');
             const id = Date.now();
-            const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
-            const uniqueNames = [...new Set(allStok.map(s => s.Nama || s.nama))];
+            const allStok = [...masterData.keramik, ...masterData.eksternal];
+            const uniqueNames = [...new Set(allStok.map(s => s.Nama || s.nama || s.NAMA))];
             const div = document.createElement('div');
             div.className = "bg-slate-50 p-4 rounded-xl border border-slate-100 relative shadow-sm";
             div.innerHTML = `
@@ -225,8 +224,8 @@
         function updateLotOptions(input) {
             const row = input.parentElement;
             const lotSelect = row.querySelector('.item-lot');
-            const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
-            const filtered = allStok.filter(s => (s.Nama || s.nama) === input.value);
+            const allStok = [...masterData.keramik, ...masterData.eksternal];
+            const filtered = allStok.filter(s => (s.Nama || s.nama || s.NAMA) === input.value);
             lotSelect.innerHTML = '<option value="">Pilih Lot</option>' + filtered.map(f => {
                 const lot = f.Lot || f.lot || '-';
                 const qty = f.QTY || f.qty || 0;
@@ -248,10 +247,7 @@
                 const selectedOption = lotSelect.options[lotSelect.selectedIndex];
                 let qty = parseFloat(qtyInput.value) || 0;
                 const maxStok = selectedOption ? parseFloat(selectedOption.getAttribute('data-max')) : 999999;
-                if (qty > maxStok) {
-                    alert(`Stok tidak cukup! Maksimal: ${maxStok}`);
-                    qty = maxStok; qtyInput.value = maxStok;
-                }
+                if (qty > maxStok) { alert(`Stok tidak cukup!`); qty = maxStok; qtyInput.value = maxStok; }
                 const price = parseFloat(row.querySelector('.item-price').value.replace(/\./g, "")) || 0;
                 totalQty += qty; totalHarga += (qty * price);
             });
@@ -259,102 +255,34 @@
             document.getElementById('totalPriceDisplay').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalHarga);
         }
 
-        async function generateOrder() {
-            const customer = document.getElementById('searchCustomer').value;
-            const note = document.getElementById('orderNote').value;
-            const totalQtyText = document.getElementById('totalQtyDisplay').innerText;
-            const totalPriceText = document.getElementById('totalPriceDisplay').innerText;
-            const shipMethod = document.getElementById('shipMethod').value;
-            
-            if(!customer) return alert("Pilih Toko!");
-
-            const now = new Date();
-            const timestamp = `Pekanbaru, ${now.getDate()} Februari ${now.getFullYear()} jam ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-            let itemsArray = [];
-            let textWA = `Pesanan Toko: *${customer}*\n---------------\n*Item / Lot / Qty / Harga*\n`;
-            
-            document.querySelectorAll('#orderItems > div').forEach(row => {
-                const motif = row.querySelector('.item-name').value;
-                const lot = row.querySelector('.item-lot').value;
-                const qty = row.querySelector('.item-qty').value;
-                const harga = row.querySelector('.item-price').value;
-                if(motif && qty) {
-                    textWA += `${motif} / ${lot} / ${qty} / Rp ${harga}\n`;
-                    itemsArray.push(`${motif}(${lot})-${qty}`);
-                }
-            });
-            
-            textWA += `---------------\nTotal QTY : *${totalQtyText}*\nTotal Harga : *${totalPriceText}*\nMetode : ${shipMethod}\n`;
-            if(note) textWA += `Note: _${note}_\n`;
-            textWA += `---------------\n_${timestamp}_`;
-            
-            navigator.clipboard.writeText(textWA);
-            document.getElementById('sendInfo').classList.remove('hidden');
-
-            const payload = {
-                sales: currentSales,
-                customer: customer,
-                items: itemsArray.join(", "),
-                total: totalPriceText
-            };
-
-            try {
-                await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                alert("Berhasil! Pesanan dicopy & terkirim ke Spreadsheet.");
-            } catch (err) { alert("Error Spreadsheet: " + err.message); }
-            finally { document.getElementById('sendInfo').classList.add('hidden'); }
-        }
-
         async function updateGitHub() {
             const token = localStorage.getItem('gh_token');
             if (!token) return alert("Token belum di-set!");
-            
             const statusEl = document.getElementById('syncStatus');
             statusEl.classList.remove('hidden');
-            
             try {
                 const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
                 const getRes = await fetch(url, { headers: { "Authorization": `token ${token}` } });
-                
-                if (!getRes.ok) throw new Error("Gagal mengambil SHA file GitHub.");
-                
                 const fileInfo = await getRes.json();
                 const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
-                
                 const putRes = await fetch(url, {
                     method: "PUT",
                     headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ 
-                        message: "Update via Mobile App", 
-                        content: content, 
-                        sha: fileInfo.sha 
-                    })
+                    body: JSON.stringify({ message: "Update Data", content: content, sha: fileInfo.sha })
                 });
-                
                 if (putRes.ok) { 
                     alert("✅ BERHASIL UPDATE SERVER!"); 
-                    fetchData(); 
-                } else {
-                    const errRes = await putRes.json();
-                    alert("Gagal Update: " + errRes.message);
+                    // Render ulang data lokal segera
+                    renderTable();
+                    updateCustomerDatalist();
                 }
-            } catch (err) { alert("GitHub Error: " + err.message); }
+            } catch (err) { alert("Error GitHub: " + err.message); }
             finally { statusEl.classList.add('hidden'); }
         }
 
-        // PERBAIKAN LOGIKA HAPUS DATA
         function clearData() {
-            if (confirm("Hapus semua data stok selamanya?")) { 
-                // Benar-benar mengosongkan array agar file JSON di GitHub jadi kosong
-                masterData.keramik = []; 
-                masterData.eksternal = [];
-                masterData.customer = []; 
+            if (confirm("Hapus semua data?")) { 
+                masterData = { keramik: [], eksternal: [], customer: [] };
                 updateGitHub(); 
             }
         }
@@ -366,22 +294,59 @@
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
                 
-                masterData.keramik = [];
-                masterData.eksternal = [];
-                masterData.customer = [];
+                // Reset masterData lokal
+                masterData = { keramik: [], eksternal: [], customer: [] };
 
                 workbook.SheetNames.forEach(name => {
-                    const lowName = name.toLowerCase();
+                    const lowName = name.toLowerCase().trim();
                     const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
                     if (lowName.includes('keramik')) masterData.keramik = jsonData;
-                    if (lowName.includes('eksternal')) masterData.eksternal = jsonData;
-                    if (lowName.includes('customer')) masterData.customer = jsonData;
+                    else if (lowName.includes('eksternal')) masterData.eksternal = jsonData;
+                    else if (lowName.includes('customer')) masterData.customer = jsonData;
                 });
                 
                 updateGitHub();
             };
             reader.readAsArrayBuffer(file);
         });
+
+        async function generateOrder() {
+            const customer = document.getElementById('searchCustomer').value;
+            if(!customer) return alert("Pilih Toko!");
+            
+            const note = document.getElementById('orderNote').value;
+            const totalQtyText = document.getElementById('totalQtyDisplay').innerText;
+            const totalPriceText = document.getElementById('totalPriceDisplay').innerText;
+            const shipMethod = document.getElementById('shipMethod').value;
+            const now = new Date();
+            const timestamp = `Pekanbaru, ${now.getDate()} Feb ${now.getFullYear()} jam ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            let itemsArray = [];
+            let textWA = `Pesanan Toko: *${customer}*\n---------------\n*Item / Lot / Qty / Harga*\n`;
+            document.querySelectorAll('#orderItems > div').forEach(row => {
+                const motif = row.querySelector('.item-name').value;
+                const lot = row.querySelector('.item-lot').value;
+                const qty = row.querySelector('.item-qty').value;
+                const harga = row.querySelector('.item-price').value;
+                if(motif && qty) {
+                    textWA += `${motif} / ${lot} / ${qty} / Rp ${harga}\n`;
+                    itemsArray.push(`${motif}(${lot})-${qty}`);
+                }
+            });
+            textWA += `---------------\nTotal QTY : *${totalQtyText}*\nTotal Harga : *${totalPriceText}*\nMetode : ${shipMethod}\n`;
+            if(note) textWA += `Note: _${note}_\n`;
+            textWA += `---------------\n_${timestamp}_`;
+            
+            navigator.clipboard.writeText(textWA);
+            document.getElementById('sendInfo').classList.remove('hidden');
+
+            const payload = { sales: currentSales, customer: customer, items: itemsArray.join(", "), total: totalPriceText };
+            try {
+                await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                alert("Berhasil dicopy & simpan ke Spreadsheet.");
+            } catch (err) { alert("Error Spreadsheet"); }
+            finally { document.getElementById('sendInfo').classList.add('hidden'); }
+        }
 
         function showPage(p) {
             document.getElementById('homePage').classList.toggle('hidden', p !== 'home');
