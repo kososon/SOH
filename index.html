@@ -12,15 +12,328 @@
         .active-nav { color: #3b82f6; border-top: 3px solid #3b82f6; }
         .hidden { display: none !important; }
         .bg-white { background-color: #ffffff !important; }
-        .bg-slate-950 { background-color: #020617 !important; }
     </style>
 </head>
 <body class="bg-slate-50 flex flex-col h-screen overflow-hidden text-slate-900">
 
     <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm">
-            <div class="text-center mb-6">
-                <h2 class="text-4xl font-black text-slate-900 tracking-tighter">SOH-  MNU Pekanbaru</h2>
-                <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mt-1">Mobile Access</p>
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
+            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH - MNU Pekanbaru</h2>
+            <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50 outline-none focus:border-blue-500">
+            <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Login</button>
+        </div>
+    </div>
+
+    <header class="bg-white border-b p-4 shadow-sm z-10">
+        <div class="flex items-center justify-between mb-3">
+            <h1 class="text-2xl font-black text-blue-600 tracking-tighter">SOH</h1>
+            <div id="adminTools" class="hidden flex gap-1">
+                <button onclick="setNewToken()" class="bg-slate-200 text-slate-700 px-2 py-2 rounded-lg text-[9px] font-black uppercase">Token</button>
+                <button onclick="clearData()" class="bg-red-600 text-white px-2 py-2 rounded-lg text-[9px] font-black uppercase">Hapus</button>
+                <label class="bg-slate-800 text-white px-2 py-2 rounded-lg text-[9px] font-black cursor-pointer uppercase">
+                    Import
+                    <input type="file" id="importExcel" class="hidden" accept=".xlsx, .xls">
+                </label>
             </div>
-            <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg
+            <button onclick="logout()" id="btnLogout" class="hidden bg-red-50 text-red-600 px-3 py-2 rounded-lg text-[10px] font-black uppercase">Logout</button>
+        </div>
+        
+        <div class="space-y-2">
+            <input type="text" id="globalSearch" placeholder="Cari Merk, Lot, atau Ukuran..." class="w-full px-4 py-2 bg-slate-100 rounded-xl outline-none text-sm font-medium focus:ring-2 focus:ring-blue-500">
+            <div class="flex gap-2">
+                <input type="text" id="searchName" placeholder="Nama Barang..." class="flex-1 px-3 py-2 bg-slate-100 rounded-xl outline-none text-[11px] font-bold focus:ring-2 focus:ring-blue-500">
+                <div class="flex items-center gap-1 bg-slate-100 px-2 rounded-xl border border-slate-200">
+                    <input type="number" id="qtyMin" placeholder="0" class="w-10 bg-transparent text-center text-[11px] font-black outline-none">
+                    <span class="text-[10px] font-bold text-slate-400">sd</span>
+                    <input type="number" id="qtyMax" placeholder="999" class="w-10 bg-transparent text-center text-[11px] font-black outline-none">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto pb-24">
+        <section id="homePage" class="p-4">
+            <div id="syncStatus" class="text-[9px] font-bold text-blue-500 mb-2 hidden uppercase text-center">🔄 Proses Sinkronisasi...</div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-50 border-b">
+                        <tr class="text-slate-500 font-black uppercase tracking-tighter">
+                            <th class="p-4">Nama</th><th class="p-4">Lot</th><th class="p-4">Merk</th><th class="p-4">Ukuran</th><th class="p-4">QTY</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100 font-bold text-slate-700">
+                        <tr><td colspan="5" class="p-10 text-center italic text-slate-400">Silahkan login...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="pesananPage" class="hidden p-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <label class="text-[10px] font-black text-slate-400 uppercase">Pilih Toko</label>
+                <input type="text" id="searchCustomer" list="customerList" placeholder="Cari Nama Toko..." class="w-full p-3 bg-slate-50 rounded-xl mb-4 font-bold border-2 border-slate-100 outline-none focus:border-blue-500">
+                <datalist id="customerList"></datalist>
+                
+                <div id="orderItems" class="space-y-4"></div>
+                <button onclick="addItemRow()" class="mt-4 w-full p-3 border-2 border-dashed border-blue-200 text-blue-600 font-black rounded-xl text-xs uppercase">+ Tambah Item</button>
+                
+                <div class="mt-8 p-5 bg-slate-900 rounded-2xl text-white shadow-xl">
+                    <div class="flex justify-between items-end mb-4 px-1">
+                        <div><p class="text-[10px] text-slate-400 uppercase font-black">Total Item</p><p class="text-xl font-black text-blue-400" id="totalQtyDisplay">0 Pcs</p></div>
+                        <div class="text-right"><p class="text-[10px] text-slate-400 uppercase font-black">Total Harga</p><p class="text-xl font-black text-green-400" id="totalPriceDisplay">Rp 0</p></div>
+                    </div>
+
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Metode Pengiriman</label>
+                    <select id="shipMethod" class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 mb-3 outline-none">
+                        <option value="Antar Toko">Antar Toko</option>
+                        <option value="Antar Alamat">Antar Alamat</option>
+                        <option value="Ambil Sendiri / Amsen">Ambil Sendiri / Amsen</option>
+                        <option value="Tunggu Konfirmasi">Tunggu Konfirmasi</option>
+                    </select>
+
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Note (Catatan)</label>
+                    <textarea id="orderNote" placeholder="Tambahkan catatan..." class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 mb-4 outline-none resize-none h-20"></textarea>
+
+                    <button id="btnGenerate" onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy & Update Spreadsheet</button>
+                    <p id="sendInfo" class="text-[9px] text-center mt-2 text-slate-400 hidden uppercase font-bold tracking-widest">⏳ Sedang Mengirim ke Spreadsheet...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2 pb-6 z-50">
+        <button onclick="showPage('home')" id="btn-home" class="flex flex-col items-center gap-1 active-nav px-6"><span class="text-xl">🏠</span><span class="text-[10px] font-black uppercase">Stok</span></button>
+        <button onclick="showPage('pesanan')" id="btn-pesanan" class="flex flex-col items-center gap-1 px-6"><span class="text-xl">📝</span><span class="text-[10px] font-black uppercase">Order</span></button>
+    </nav>
+
+    <script>
+        const REPO_OWNER = "kososon"; 
+        const REPO_NAME = "SOH";   
+        const DATA_FILE = "data.json";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx0-vc0hN7QMMIJ6GdpI0Z_0jkCKC5t6TMqt_wJgww6ZQwphl-HySTIsMoTS7KHyvj2/exec";
+
+        let masterData = { keramik: [], eksternal: [], customer: [] };
+        let currentSales = "Sales Mobile";
+
+        function login() {
+            const pass = document.getElementById('passInput').value.toUpperCase();
+            const users = { 'TEAM123': 'admin', 'ARI123': 'Arifin', 'MAU123': 'Maulana', 'RIK123': 'Riki Yolanda', 'AZH123': 'Azhar', 'RIF123': 'Rifky' };
+            if (users[pass]) {
+                currentSales = users[pass];
+                document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('btnLogout').classList.remove('hidden');
+                if(users[pass] === 'admin') document.getElementById('adminTools').classList.remove('hidden');
+                fetchData();
+            } else { alert("Password Salah!"); }
+        }
+
+        function logout() { location.reload(); }
+        function setNewToken() {
+            const token = prompt("Masukkan GitHub Token:");
+            if (token) { localStorage.setItem('gh_token', token); alert("Token Disimpan!"); }
+        }
+
+        async function fetchData() {
+            try {
+                const url = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/${DATA_FILE}?nocache=${new Date().getTime()}`;
+                const res = await fetch(url);
+                if (res.ok) {
+                    masterData = await res.json();
+                    renderTable();
+                    updateCustomerDatalist();
+                }
+            } catch (e) { console.error("Error Fetch"); }
+        }
+
+        function renderTable() {
+            const data = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
+            const body = document.getElementById('tableBody');
+            body.innerHTML = data.map(item => `
+                <tr class="border-b">
+                    <td class="p-4 font-bold">${item.Nama || '-'}</td>
+                    <td class="p-4 text-slate-500">${item.Lot || '-'}</td>
+                    <td class="p-4 text-[10px] uppercase">${item.Merk || '-'}</td>
+                    <td class="p-4 text-[10px] text-slate-400">${item.Ukuran || '-'}</td>
+                    <td class="p-4 text-blue-600 font-black">${item.QTY || 0}</td>
+                </tr>
+            `).join('');
+            filterData();
+        }
+
+        function filterData() {
+            const gSearch = document.getElementById('globalSearch').value.toLowerCase();
+            const nSearch = document.getElementById('searchName').value.toLowerCase();
+            const minQ = parseFloat(document.getElementById('qtyMin').value) || 0;
+            const maxQ = parseFloat(document.getElementById('qtyMax').value) || 999999;
+            const rows = document.querySelectorAll('#tableBody tr');
+            rows.forEach(row => {
+                const cells = row.getElementsByTagName('td');
+                if (cells.length < 5) return;
+                const fullText = row.innerText.toLowerCase();
+                const qty = parseFloat(cells[4].innerText) || 0;
+                const matchGlobal = fullText.includes(gSearch);
+                const matchName = cells[0].innerText.toLowerCase().includes(nSearch);
+                const matchQty = (qty >= minQ && qty <= maxQ);
+                row.style.display = (matchGlobal && matchName && matchQty) ? "" : "none";
+            });
+        }
+
+        ['globalSearch', 'searchName', 'qtyMin', 'qtyMax'].forEach(id => {
+            document.getElementById(id).addEventListener('input', filterData);
+        });
+
+        function updateCustomerDatalist() {
+            const list = document.getElementById('customerList');
+            if (masterData.customer) {
+                list.innerHTML = masterData.customer.map(c => `<option value="${c['Nama Toko'] || ''}">`).join('');
+            }
+        }
+
+        function addItemRow() {
+            const container = document.getElementById('orderItems');
+            const id = Date.now();
+            const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
+            const uniqueNames = [...new Set(allStok.map(s => s.Nama))];
+            const div = document.createElement('div');
+            div.className = "bg-slate-50 p-4 rounded-xl border border-slate-100 relative shadow-sm";
+            div.innerHTML = `
+                <button onclick="this.parentElement.remove(); calcTotal();" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs font-black">×</button>
+                <input type="text" list="stok-${id}" onchange="updateLotOptions(this)" placeholder="Cari Item..." class="item-name w-full p-2 rounded-lg border-2 border-white mb-2 font-bold text-sm outline-none">
+                <datalist id="stok-${id}">${uniqueNames.map(n => `<option value="${n}">`).join('')}</datalist>
+                <div class="grid grid-cols-2 gap-2">
+                    <select class="item-lot p-2 rounded-lg border-2 border-white text-xs font-bold outline-none" onchange="calcTotal()"><option value="">Pilih Lot</option></select>
+                    <input type="number" oninput="calcTotal()" placeholder="QTY" class="item-qty p-2 rounded-lg border-2 border-white text-center font-black text-blue-600 outline-none">
+                </div>
+                <input type="text" oninput="formatCurrency(this)" placeholder="Harga Satuan" class="item-price w-full p-2 rounded-lg border-2 border-white mt-2 font-bold text-sm outline-none">
+            `;
+            container.appendChild(div);
+        }
+
+        function updateLotOptions(input) {
+            const row = input.parentElement;
+            const lotSelect = row.querySelector('.item-lot');
+            const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
+            const filtered = allStok.filter(s => s.Nama === input.value);
+            lotSelect.innerHTML = '<option value="">Pilih Lot</option>' + filtered.map(f => `<option value="${f.Lot}" data-max="${f.QTY}">${f.Lot} (Sisa: ${f.QTY})</option>`).join('');
+        }
+
+        function formatCurrency(input) {
+            let val = input.value.replace(/\D/g, "");
+            if (val !== "") input.value = new Intl.NumberFormat('id-ID').format(val);
+            calcTotal();
+        }
+
+        function calcTotal() {
+            let totalHarga = 0, totalQty = 0;
+            document.querySelectorAll('#orderItems > div').forEach(row => {
+                const qtyInput = row.querySelector('.item-qty');
+                const lotSelect = row.querySelector('.item-lot');
+                const selectedOption = lotSelect.options[lotSelect.selectedIndex];
+                let qty = parseFloat(qtyInput.value) || 0;
+                const maxStok = selectedOption ? parseFloat(selectedOption.getAttribute('data-max')) : 999999;
+                if (qty > maxStok) {
+                    alert(`Stok tidak cukup! Maksimal: ${maxStok}`);
+                    qty = maxStok; qtyInput.value = maxStok;
+                }
+                const price = parseFloat(row.querySelector('.item-price').value.replace(/\./g, "")) || 0;
+                totalQty += qty; totalHarga += (qty * price);
+            });
+            document.getElementById('totalQtyDisplay').innerText = totalQty + " Pcs";
+            document.getElementById('totalPriceDisplay').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalHarga);
+        }
+
+        // FUNGSI GENERATE BARU (Sesuai skrip doPost JSON Anda)
+        async function generateOrder() {
+            const customer = document.getElementById('searchCustomer').value;
+            const note = document.getElementById('orderNote').value;
+            const totalQtyText = document.getElementById('totalQtyDisplay').innerText;
+            const totalPriceText = document.getElementById('totalPriceDisplay').innerText;
+            const shipMethod = document.getElementById('shipMethod').value;
+            
+            if(!customer) return alert("Pilih Toko!");
+
+            // Format Waktu Realtime
+            const now = new Date();
+            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const timestampWA = `Pekanbaru, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()} jam ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+            let itemsArray = [];
+            let textWA = `Pesanan Toko: *${customer}*\n---------------\n*Item / Lot / Qty / Harga*\n`;
+            
+            document.querySelectorAll('#orderItems > div').forEach(row => {
+                const motif = row.querySelector('.item-name').value;
+                const lot = row.querySelector('.item-lot').value;
+                const qty = row.querySelector('.item-qty').value;
+                const harga = row.querySelector('.item-price').value;
+                if(motif && qty) {
+                    textWA += `${motif} / ${lot} / ${qty} / Rp ${harga}\n`;
+                    itemsArray.push(`${motif}(${lot})-${qty}`);
+                }
+            });
+            
+            textWA += `---------------\nTotal QTY : *${totalQtyText}*\nTotal Harga : *${totalPriceText}*\nMetode : ${shipMethod}\n`;
+            if(note) textWA += `Note: _${note}_\n`;
+            textWA += `---------------\n_${timestampWA}_`;
+            
+            // 1. Salin ke Clipboard WA
+            navigator.clipboard.writeText(textWA);
+            
+            // 2. Kirim Data ke Spreadsheet (JSON format)
+            document.getElementById('sendInfo').classList.remove('hidden');
+            
+            const payload = {
+                sales: currentSales,
+                customer: customer,
+                items: itemsArray.join(", "),
+                total: totalPriceText
+            };
+
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                alert("Berhasil! Pesanan disalin ke WA & data terkirim ke Spreadsheet.");
+            } catch (err) {
+                console.error(err);
+                alert("Gagal mengirim data otomatis.");
+            } finally {
+                document.getElementById('sendInfo').classList.add('hidden');
+            }
+        }
+
+        async function updateGitHub() {
+            const token = localStorage.getItem('gh_token');
+            if (!token) return alert("Token belum di-set!");
+            const statusEl = document.getElementById('syncStatus');
+            statusEl.classList.remove('hidden');
+            try {
+                const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
+                const getRes = await fetch(url, { headers: { "Authorization": `token ${token}` } });
+                const fileInfo = await getRes.json();
+                const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
+                const putRes = await fetch(url, {
+                    method: "PUT",
+                    headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: "Update Data", content: content, sha: fileInfo.sha })
+                });
+                if (putRes.ok) { alert("✅ BERHASIL!"); fetchData(); }
+            } catch (err) { alert("Error: " + err.message); }
+            finally { statusEl.classList.add('hidden'); }
+        }
+
+        function clearData() {
+            if (confirm("Hapus data?")) { masterData.keramik = []; updateGitHub(); }
+        }
+
+        function showPage(p) {
+            document.getElementById('homePage').classList.toggle('hidden', p !== 'home');
+            document.getElementById('pesananPage').classList.toggle('hidden', p !== 'pesanan');
+            document.getElementById('btn-home').classList.toggle('active-nav', p === 'home');
+            document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
+        }
+    </script>
+</body>
+</html>
