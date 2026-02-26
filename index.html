@@ -18,7 +18,7 @@
 
     <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH - MNU Pekanbaru</h2>
+            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH</h2>
             <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50 outline-none focus:border-blue-500">
             <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Login</button>
         </div>
@@ -82,7 +82,6 @@
                         <div><p class="text-[10px] text-slate-400 uppercase font-black">Total Item</p><p class="text-xl font-black text-blue-400" id="totalQtyDisplay">0 Pcs</p></div>
                         <div class="text-right"><p class="text-[10px] text-slate-400 uppercase font-black">Total Harga</p><p class="text-xl font-black text-green-400" id="totalPriceDisplay">Rp 0</p></div>
                     </div>
-
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Metode Pengiriman</label>
                     <select id="shipMethod" class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 mb-3 outline-none">
                         <option value="Antar Toko">Antar Toko</option>
@@ -90,12 +89,11 @@
                         <option value="Ambil Sendiri / Amsen">Ambil Sendiri / Amsen</option>
                         <option value="Tunggu Konfirmasi">Tunggu Konfirmasi</option>
                     </select>
-
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Note (Catatan)</label>
-                    <textarea id="orderNote" placeholder="Tambahkan catatan..." class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 mb-4 outline-none resize-none h-20"></textarea>
-
-                    <button id="btnGenerate" onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy & Update Spreadsheet</button>
-                    <p id="sendInfo" class="text-[9px] text-center mt-2 text-slate-400 hidden uppercase font-bold tracking-widest">⏳ Sedang Mengirim ke Spreadsheet...</p>
+                    <textarea id="orderNote" placeholder="Catatan..." class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 mb-4 outline-none h-20"></textarea>
+                    
+                    <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy & Simpan Report</button>
+                    <p id="sendInfo" class="text-[9px] text-center mt-2 text-slate-400 hidden uppercase font-bold">Mengirim ke Spreadsheet...</p>
                 </div>
             </div>
         </section>
@@ -242,7 +240,6 @@
             document.getElementById('totalPriceDisplay').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalHarga);
         }
 
-        // FUNGSI GENERATE BARU (Sesuai skrip doPost JSON Anda)
         async function generateOrder() {
             const customer = document.getElementById('searchCustomer').value;
             const note = document.getElementById('orderNote').value;
@@ -252,10 +249,10 @@
             
             if(!customer) return alert("Pilih Toko!");
 
-            // Format Waktu Realtime
             const now = new Date();
-            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-            const timestampWA = `Pekanbaru, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()} jam ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            const dateStr = `${now.getDate()} Februari ${now.getFullYear()}`;
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            const timestamp = `Pekanbaru, ${dateStr} jam ${timeStr}`;
 
             let itemsArray = [];
             let textWA = `Pesanan Toko: *${customer}*\n---------------\n*Item / Lot / Qty / Harga*\n`;
@@ -273,14 +270,11 @@
             
             textWA += `---------------\nTotal QTY : *${totalQtyText}*\nTotal Harga : *${totalPriceText}*\nMetode : ${shipMethod}\n`;
             if(note) textWA += `Note: _${note}_\n`;
-            textWA += `---------------\n_${timestampWA}_`;
+            textWA += `---------------\n_${timestamp}_`;
             
-            // 1. Salin ke Clipboard WA
             navigator.clipboard.writeText(textWA);
-            
-            // 2. Kirim Data ke Spreadsheet (JSON format)
             document.getElementById('sendInfo').classList.remove('hidden');
-            
+
             const payload = {
                 sales: currentSales,
                 customer: customer,
@@ -291,42 +285,76 @@
             try {
                 await fetch(WEB_APP_URL, {
                     method: 'POST',
-                    mode: 'no-cors', 
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                alert("Berhasil! Pesanan disalin ke WA & data terkirim ke Spreadsheet.");
-            } catch (err) {
-                console.error(err);
-                alert("Gagal mengirim data otomatis.");
-            } finally {
-                document.getElementById('sendInfo').classList.add('hidden');
-            }
+                alert("Berhasil! Pesanan dicopy & terkirim ke Spreadsheet.");
+            } catch (err) { alert("Error Spreadsheet: " + err.message); }
+            finally { document.getElementById('sendInfo').classList.add('hidden'); }
         }
 
+        // FUNGSI UPDATE GITHUB (UNTUK IMPORT & HAPUS)
         async function updateGitHub() {
             const token = localStorage.getItem('gh_token');
             if (!token) return alert("Token belum di-set!");
+            
             const statusEl = document.getElementById('syncStatus');
             statusEl.classList.remove('hidden');
+            
             try {
                 const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
                 const getRes = await fetch(url, { headers: { "Authorization": `token ${token}` } });
+                
+                if (!getRes.ok) throw new Error("Gagal mengambil SHA file GitHub.");
+                
                 const fileInfo = await getRes.json();
                 const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
+                
                 const putRes = await fetch(url, {
                     method: "PUT",
                     headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: "Update Data", content: content, sha: fileInfo.sha })
+                    body: JSON.stringify({ 
+                        message: "Update via Mobile App", 
+                        content: content, 
+                        sha: fileInfo.sha 
+                    })
                 });
-                if (putRes.ok) { alert("✅ BERHASIL!"); fetchData(); }
-            } catch (err) { alert("Error: " + err.message); }
+                
+                if (putRes.ok) { 
+                    alert("✅ BERHASIL UPDATE SERVER!"); 
+                    fetchData(); 
+                } else {
+                    const errRes = await putRes.json();
+                    alert("Gagal Update: " + errRes.message);
+                }
+            } catch (err) { alert("GitHub Error: " + err.message); }
             finally { statusEl.classList.add('hidden'); }
         }
 
         function clearData() {
-            if (confirm("Hapus data?")) { masterData.keramik = []; updateGitHub(); }
+            if (confirm("Hapus semua data stok?")) { 
+                masterData.keramik = []; 
+                masterData.eksternal = [];
+                updateGitHub(); 
+            }
         }
+
+        document.getElementById('importExcel').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                workbook.SheetNames.forEach(name => {
+                    const lowName = name.toLowerCase();
+                    if (lowName.includes('keramik')) masterData.keramik = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
+                    if (lowName.includes('customer')) masterData.customer = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
+                });
+                updateGitHub();
+            };
+            reader.readAsArrayBuffer(file);
+        });
 
         function showPage(p) {
             document.getElementById('homePage').classList.toggle('hidden', p !== 'home');
