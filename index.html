@@ -18,7 +18,7 @@
 
     <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH - MNU Pekanbaru</h2>
+            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH Mobile - MNU Pekanbaru</h2>
             <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50 outline-none focus:border-blue-500">
             <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Login</button>
         </div>
@@ -115,7 +115,7 @@
 
         function login() {
             const pass = document.getElementById('passInput').value.toUpperCase();
-            const users = { 'TEAM123': 'admin', 'ARI123': 'Arifin', 'WIL123': 'William', 'RIY123': 'Riyanto', 'MAU123': 'Maulana', 'RIK123': 'Riki Yolanda', 'AZH123': 'Azhar', 'RIF123': 'Rifky' };
+            const users = { 'TEAM123': 'admin', 'ARI123': 'Arifin', 'MAU123': 'Maulana', 'RIK123': 'Riki Yolanda', 'AZH123': 'Azhar', 'RIF123': 'Rifky' };
             if (users[pass]) {
                 currentSales = users[pass];
                 document.getElementById('loginPage').classList.add('hidden');
@@ -133,7 +133,6 @@
 
         async function fetchData() {
             try {
-                // Tambahkan nocache agar data terbaru selalu terambil
                 const url = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/${DATA_FILE}?nocache=${new Date().getTime()}`;
                 const res = await fetch(url);
                 if (res.ok) {
@@ -145,7 +144,6 @@
         }
 
         function renderTable() {
-            // Gabungkan keramik dan eksternal. Pastikan data ada atau buat array kosong.
             const data = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const body = document.getElementById('tableBody');
             
@@ -155,22 +153,20 @@
             }
 
             body.innerHTML = data.map(item => {
-                // Mengatasi masalah Case-Sensitive pada header Excel (Nama vs nama)
                 const nama = item.Nama || item.nama || '-';
                 const lot = item.Lot || item.lot || '-';
                 const merk = item.Merk || item.merk || '-';
                 const ukuran = item.Ukuran || item.ukuran || '-';
                 const qty = item.QTY || item.qty || 0;
 
-                return `
-                <tr class="border-b">
+                return `<tr class="border-b">
                     <td class="p-4 font-bold">${nama}</td>
                     <td class="p-4 text-slate-500">${lot}</td>
                     <td class="p-4 text-[10px] uppercase">${merk}</td>
                     <td class="p-4 text-[10px] text-slate-400">${ukuran}</td>
                     <td class="p-4 text-blue-600 font-black">${qty}</td>
-                </tr>
-            `}).join('');
+                </tr>`
+            }).join('');
             filterData();
         }
 
@@ -184,13 +180,10 @@
                 const cells = row.getElementsByTagName('td');
                 if (cells.length < 5) return;
                 const fullText = row.innerText.toLowerCase();
-                const qtyText = cells[4].innerText;
-                const qty = parseFloat(qtyText) || 0;
-                
+                const qty = parseFloat(cells[4].innerText) || 0;
                 const matchGlobal = fullText.includes(gSearch);
                 const matchName = cells[0].innerText.toLowerCase().includes(nSearch);
                 const matchQty = (qty >= minQ && qty <= maxQ);
-                
                 row.style.display = (matchGlobal && matchName && matchQty) ? "" : "none";
             });
         }
@@ -213,9 +206,7 @@
             const container = document.getElementById('orderItems');
             const id = Date.now();
             const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
-            // Ambil nama unik dengan support case-insensitive
             const uniqueNames = [...new Set(allStok.map(s => s.Nama || s.nama))];
-            
             const div = document.createElement('div');
             div.className = "bg-slate-50 p-4 rounded-xl border border-slate-100 relative shadow-sm";
             div.innerHTML = `
@@ -278,9 +269,7 @@
             if(!customer) return alert("Pilih Toko!");
 
             const now = new Date();
-            const dateStr = `${now.getDate()} Februari ${now.getFullYear()}`;
-            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-            const timestamp = `Pekanbaru, ${dateStr} jam ${timeStr}`;
+            const timestamp = `Pekanbaru, ${now.getDate()} Februari ${now.getFullYear()} jam ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
             let itemsArray = [];
             let textWA = `Pesanan Toko: *${customer}*\n---------------\n*Item / Lot / Qty / Harga*\n`;
@@ -350,8 +339,7 @@
                 
                 if (putRes.ok) { 
                     alert("✅ BERHASIL UPDATE SERVER!"); 
-                    // Tunggu sebentar lalu refresh data lokal
-                    setTimeout(fetchData, 1000);
+                    fetchData(); 
                 } else {
                     const errRes = await putRes.json();
                     alert("Gagal Update: " + errRes.message);
@@ -360,10 +348,13 @@
             finally { statusEl.classList.add('hidden'); }
         }
 
+        // PERBAIKAN LOGIKA HAPUS DATA
         function clearData() {
-            if (confirm("Hapus semua data stok?")) { 
+            if (confirm("Hapus semua data stok selamanya?")) { 
+                // Benar-benar mengosongkan array agar file JSON di GitHub jadi kosong
                 masterData.keramik = []; 
                 masterData.eksternal = [];
+                masterData.customer = []; 
                 updateGitHub(); 
             }
         }
@@ -375,7 +366,6 @@
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
                 
-                // Reset data sebelum import baru
                 masterData.keramik = [];
                 masterData.eksternal = [];
                 masterData.customer = [];
