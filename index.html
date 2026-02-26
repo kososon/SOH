@@ -72,7 +72,6 @@
         function login() {
             const pass = document.getElementById('passInput').value.toUpperCase();
             const users = { 'TEAM123': 'admin', 'ARI123': 'Arifin', 'MAU123': 'Maulana' };
-
             if (users[pass]) {
                 currentUser = users[pass];
                 document.getElementById('loginPage').classList.add('hidden');
@@ -103,10 +102,6 @@
         function renderTable() {
             const data = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const body = document.getElementById('tableBody');
-            if (data.length === 0) {
-                body.innerHTML = '<tr><td colspan="5" class="p-10 text-center italic text-slate-400">Data Kosong</td></tr>';
-                return;
-            }
             body.innerHTML = data.map(item => `
                 <tr class="border-b">
                     <td class="p-4 font-bold">${item.Nama || '-'}</td>
@@ -118,7 +113,7 @@
             `).join('');
         }
 
-        // FUNGSI IMPORT YANG DIPERBAIKI
+        // FUNGSI IMPORT EXCEL
         document.getElementById('importExcel').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -132,27 +127,27 @@
                     let sheetFound = false;
                     workbook.SheetNames.forEach(sheetName => {
                         const lowName = sheetName.toLowerCase();
-                        // Mendukung nama: keramik, eksternal, customer, Data_Keramik, Data_Customer
+                        
+                        // Import Stok Keramik
                         if (lowName.includes('keramik')) {
                             masterData.keramik = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
                             sheetFound = true;
-                        } else if (lowName.includes('eksternal')) {
-                            masterData.eksternal = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                            sheetFound = true;
-                        } else if (lowName.includes('customer')) {
+                        } 
+                        // Import Customer (Header: nama customer, Nama Toko, id)
+                        else if (lowName.includes('customer')) {
                             masterData.customer = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
                             sheetFound = true;
                         }
                     });
 
                     if (!sheetFound) {
-                        alert("Gagal: Nama Sheet di Excel tidak dikenali! Gunakan nama 'keramik' atau 'customer'.");
+                        alert("Gagal: Sheet 'keramik' atau 'customer' tidak ditemukan!");
                     } else {
-                        alert("Berhasil membaca file. Memulai upload ke GitHub...");
+                        alert("Berhasil membaca file. Mengunggah ke GitHub...");
                         updateGitHub();
                     }
                 } catch (err) {
-                    alert("Error membaca file: " + err.message);
+                    alert("Error: " + err.message);
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -160,44 +155,35 @@
 
         async function updateGitHub() {
             const token = localStorage.getItem('gh_token');
-            if (!token) {
-                alert("Token belum diisi! Klik tombol Token dulu.");
-                return;
-            }
+            if (!token) return alert("Token belum diisi!");
 
             const statusEl = document.getElementById('syncStatus');
             statusEl.classList.remove('hidden');
 
             try {
                 const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
-                
-                // 1. Ambil SHA file lama
                 const getRes = await fetch(url, { headers: { "Authorization": `token ${token}` } });
                 const fileInfo = await getRes.json();
                 
-                if (!getRes.ok) throw new Error("Gagal ambil info file dari GitHub.");
-
-                // 2. Upload Data Baru
                 const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
                 const putRes = await fetch(url, {
                     method: "PUT",
                     headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        message: "Update SOH via Web",
+                        message: "Update via Web Admin",
                         content: content,
                         sha: fileInfo.sha
                     })
                 });
 
                 if (putRes.ok) {
-                    alert("✅ DATA BERHASIL TERUPDATE DI GITHUB!");
+                    alert("✅ UPDATE BERHASIL!");
                     renderTable();
                 } else {
-                    const errorData = await putRes.json();
-                    alert("❌ Gagal Update GitHub: " + errorData.message);
+                    alert("❌ Gagal upload ke GitHub.");
                 }
             } catch (err) {
-                alert("Kesalahan Sistem: " + err.message);
+                alert("Kesalahan: " + err.message);
             } finally {
                 statusEl.classList.add('hidden');
             }
@@ -206,7 +192,6 @@
         function clearData() {
             if (confirm("Hapus stok?")) {
                 masterData.keramik = [];
-                masterData.eksternal = [];
                 updateGitHub();
             }
         }
