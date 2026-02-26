@@ -18,7 +18,7 @@
 
     <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH</h2>
+            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH - MNU Pekanbaru</h2>
             <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50 outline-none focus:border-blue-500">
             <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Login</button>
         </div>
@@ -54,12 +54,47 @@
                         </tr>
                     </thead>
                     <tbody id="tableBody" class="divide-y divide-slate-100 font-bold text-slate-700">
-                        <tr><td colspan="5" class="p-10 text-center italic text-slate-400">Silahkan login untuk melihat data</td></tr>
+                        <tr><td colspan="5" class="p-10 text-center italic text-slate-400">Silahkan login...</td></tr>
                     </tbody>
                 </table>
             </div>
         </section>
+
+        <section id="pesananPage" class="hidden p-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200">
+                <label class="text-[10px] font-black text-slate-400 uppercase">Pilih Toko</label>
+                <input type="text" id="searchCustomer" list="customerList" placeholder="Cari Nama Toko..." class="w-full p-3 bg-slate-50 rounded-xl mb-4 font-bold border-2 border-slate-100 outline-none focus:border-blue-500">
+                <datalist id="customerList"></datalist>
+                
+                <div id="orderItems" class="space-y-4"></div>
+                <button onclick="addItemRow()" class="mt-4 w-full p-3 border-2 border-dashed border-blue-200 text-blue-600 font-black rounded-xl text-xs uppercase">+ Tambah Item</button>
+                
+                <div class="mt-8 p-5 bg-slate-900 rounded-2xl text-white shadow-xl">
+                    <div class="flex justify-between items-end mb-4 px-1">
+                        <div><p class="text-[10px] text-slate-400 uppercase font-black">Total Item</p><p class="text-xl font-black text-blue-400" id="totalQtyDisplay">0 Pcs</p></div>
+                        <div class="text-right"><p class="text-[10px] text-slate-400 uppercase font-black">Total Harga</p><p class="text-xl font-black text-green-400" id="totalPriceDisplay">Rp 0</p></div>
+                    </div>
+
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Metode Pengiriman</label>
+                    <select id="shipMethod" class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 mb-3 outline-none">
+                        <option value="Antar Toko">Antar Toko</option>
+                        <option value="Ambil Sendiri (Amsen)">Ambil Sendiri (Amsen)</option>
+                    </select>
+
+                    <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy Pesanan</button>
+                </div>
+            </div>
+        </section>
     </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2 pb-6 z-50">
+        <button onclick="showPage('home')" id="btn-home" class="flex flex-col items-center gap-1 active-nav px-6">
+            <span class="text-xl">🏠</span><span class="text-[10px] font-black uppercase">Stok</span>
+        </button>
+        <button onclick="showPage('pesanan')" id="btn-pesanan" class="flex flex-col items-center gap-1 px-6">
+            <span class="text-xl">📝</span><span class="text-[10px] font-black uppercase">Order</span>
+        </button>
+    </nav>
 
     <script>
         const REPO_OWNER = "kososon"; 
@@ -69,9 +104,10 @@
         let masterData = { keramik: [], eksternal: [], customer: [] };
         let currentUser = null;
 
+        // AUTH
         function login() {
             const pass = document.getElementById('passInput').value.toUpperCase();
-            const users = { 'TEAM123': 'admin', 'ARI123': 'Arifin', 'MAU123': 'Maulana' };
+            const users = { 'TEAM123': 'admin', 'ARI123': 'Arifin', 'MAU123': 'Maulana', 'RIK123': 'Riki Yolanda', 'AZH123': 'Azhar', 'RIF123': 'Rifky' };
             if (users[pass]) {
                 currentUser = users[pass];
                 document.getElementById('loginPage').classList.add('hidden');
@@ -81,13 +117,13 @@
             } else { alert("Password Salah!"); }
         }
 
+        function logout() { location.reload(); }
         function setNewToken() {
             const token = prompt("Masukkan GitHub Token:");
             if (token) { localStorage.setItem('gh_token', token); alert("Token Disimpan!"); }
         }
 
-        function logout() { location.reload(); }
-
+        // FETCH DATA
         async function fetchData() {
             try {
                 const url = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/${DATA_FILE}?nocache=${new Date().getTime()}`;
@@ -95,8 +131,9 @@
                 if (res.ok) {
                     masterData = await res.json();
                     renderTable();
+                    updateCustomerDatalist();
                 }
-            } catch (e) { console.error("Fetch error"); }
+            } catch (e) { console.error("Gagal ambil data"); }
         }
 
         function renderTable() {
@@ -113,87 +150,127 @@
             `).join('');
         }
 
-        // FUNGSI IMPORT EXCEL
+        function updateCustomerDatalist() {
+            const list = document.getElementById('customerList');
+            if (!masterData.customer) return;
+            // Menggunakan header baru: "Nama Toko"
+            list.innerHTML = masterData.customer.map(c => `<option value="${c['Nama Toko'] || ''}">`).join('');
+        }
+
+        // ORDER LOGIC
+        function addItemRow() {
+            const container = document.getElementById('orderItems');
+            const id = Date.now();
+            const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
+            const uniqueNames = [...new Set(allStok.map(s => s.Nama))];
+            
+            const div = document.createElement('div');
+            div.className = "bg-slate-50 p-4 rounded-xl border border-slate-100 relative";
+            div.innerHTML = `
+                <button onclick="this.parentElement.remove(); calcTotal();" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs font-black">×</button>
+                <input type="text" list="stok-${id}" onchange="updateLotOptions(this)" placeholder="Cari Item..." class="item-name w-full p-2 rounded-lg border-2 border-white mb-2 font-bold text-sm outline-none">
+                <datalist id="stok-${id}">${uniqueNames.map(n => `<option value="${n}">`).join('')}</datalist>
+                <div class="grid grid-cols-2 gap-2">
+                    <select class="item-lot p-2 rounded-lg border-2 border-white text-xs font-bold outline-none" onchange="calcTotal()">
+                        <option value="">Pilih Lot</option>
+                    </select>
+                    <input type="number" oninput="calcTotal()" placeholder="QTY" class="item-qty p-2 rounded-lg border-2 border-white text-center font-black text-blue-600 outline-none">
+                </div>
+                <input type="text" oninput="formatCurrency(this)" placeholder="Harga Satuan" class="item-price w-full p-2 rounded-lg border-2 border-white mt-2 font-bold text-sm outline-none">
+            `;
+            container.appendChild(div);
+        }
+
+        function updateLotOptions(input) {
+            const row = input.parentElement;
+            const lotSelect = row.querySelector('.item-lot');
+            const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
+            const filtered = allStok.filter(s => s.Nama === input.value);
+            lotSelect.innerHTML = '<option value="">Pilih Lot</option>' + filtered.map(f => `<option value="${f.Lot}">${f.Lot} (Sisa: ${f.QTY})</option>`).join('');
+        }
+
+        function formatCurrency(input) {
+            let val = input.value.replace(/\D/g, "");
+            if (val !== "") input.value = new Intl.NumberFormat('id-ID').format(val);
+            calcTotal();
+        }
+
+        function calcTotal() {
+            let totalHarga = 0, totalQty = 0;
+            document.querySelectorAll('#orderItems > div').forEach(row => {
+                const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+                const price = parseFloat(row.querySelector('.item-price').value.replace(/\./g, "")) || 0;
+                totalQty += qty;
+                totalHarga += (qty * price);
+            });
+            document.getElementById('totalQtyDisplay').innerText = totalQty + " Pcs";
+            document.getElementById('totalPriceDisplay').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalHarga);
+        }
+
+        function generateOrder() {
+            const customer = document.getElementById('searchCustomer').value;
+            if(!customer) return alert("Pilih Toko!");
+            
+            let text = `Pesanan Toko: *${customer}*\n---------------\n*Item / Lot / Qty / Harga*\n`;
+            document.querySelectorAll('#orderItems > div').forEach(row => {
+                const motif = row.querySelector('.item-name').value;
+                const lot = row.querySelector('.item-lot').value;
+                const qty = row.querySelector('.item-qty').value;
+                const harga = row.querySelector('.item-price').value;
+                if(motif && qty) text += `${motif} / ${lot} / ${qty} / Rp ${harga}\n`;
+            });
+            
+            text += `---------------\n*Total: ${document.getElementById('totalPriceDisplay').innerText}*\nMetode: ${document.getElementById('shipMethod').value}`;
+            navigator.clipboard.writeText(text);
+            alert("Pesanan Disalin!");
+        }
+
+        // IMPORT EXCEL
         document.getElementById('importExcel').addEventListener('change', function(e) {
             const file = e.target.files[0];
-            if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    
-                    let sheetFound = false;
-                    workbook.SheetNames.forEach(sheetName => {
-                        const lowName = sheetName.toLowerCase();
-                        
-                        // Import Stok Keramik
-                        if (lowName.includes('keramik')) {
-                            masterData.keramik = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                            sheetFound = true;
-                        } 
-                        // Import Customer (Header: nama customer, Nama Toko, id)
-                        else if (lowName.includes('customer')) {
-                            masterData.customer = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                            sheetFound = true;
-                        }
-                    });
-
-                    if (!sheetFound) {
-                        alert("Gagal: Sheet 'keramik' atau 'customer' tidak ditemukan!");
-                    } else {
-                        alert("Berhasil membaca file. Mengunggah ke GitHub...");
-                        updateGitHub();
-                    }
-                } catch (err) {
-                    alert("Error: " + err.message);
-                }
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                workbook.SheetNames.forEach(name => {
+                    const lowName = name.toLowerCase();
+                    if (lowName.includes('keramik')) masterData.keramik = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
+                    if (lowName.includes('customer')) masterData.customer = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
+                });
+                updateGitHub();
             };
             reader.readAsArrayBuffer(file);
         });
 
         async function updateGitHub() {
             const token = localStorage.getItem('gh_token');
-            if (!token) return alert("Token belum diisi!");
-
+            if (!token) return alert("Klik tombol TOKEN dulu!");
             const statusEl = document.getElementById('syncStatus');
             statusEl.classList.remove('hidden');
-
             try {
                 const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
                 const getRes = await fetch(url, { headers: { "Authorization": `token ${token}` } });
                 const fileInfo = await getRes.json();
-                
                 const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
                 const putRes = await fetch(url, {
                     method: "PUT",
                     headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        message: "Update via Web Admin",
-                        content: content,
-                        sha: fileInfo.sha
-                    })
+                    body: JSON.stringify({ message: "Update via Web", content: content, sha: fileInfo.sha })
                 });
-
-                if (putRes.ok) {
-                    alert("✅ UPDATE BERHASIL!");
-                    renderTable();
-                } else {
-                    alert("❌ Gagal upload ke GitHub.");
-                }
-            } catch (err) {
-                alert("Kesalahan: " + err.message);
-            } finally {
-                statusEl.classList.add('hidden');
-            }
+                if (putRes.ok) { alert("✅ UPDATE BERHASIL!"); fetchData(); }
+            } catch (err) { alert("Gagal: " + err.message); }
+            finally { statusEl.classList.add('hidden'); }
         }
 
         function clearData() {
-            if (confirm("Hapus stok?")) {
-                masterData.keramik = [];
-                updateGitHub();
-            }
+            if (confirm("Hapus stok?")) { masterData.keramik = []; updateGitHub(); }
+        }
+
+        function showPage(p) {
+            document.getElementById('homePage').classList.toggle('hidden', p !== 'home');
+            document.getElementById('pesananPage').classList.toggle('hidden', p !== 'pesanan');
+            document.getElementById('btn-home').classList.toggle('active-nav', p === 'home');
+            document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
         }
     </script>
 </body>
