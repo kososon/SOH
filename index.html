@@ -18,7 +18,7 @@
 
     <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH</h2>
+            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH - MNU Pekanbaru</h2>
             <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50 outline-none focus:border-blue-500">
             <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Login</button>
         </div>
@@ -62,7 +62,7 @@
                         </tr>
                     </thead>
                     <tbody id="tableBody" class="divide-y divide-slate-100 font-bold text-slate-700">
-                        <tr><td colspan="5" class="p-10 text-center italic text-slate-400">Silahkan login...</td></tr>
+                        <tr><td colspan="5" class="p-10 text-center italic text-slate-400">Memuat data...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -115,7 +115,7 @@
 
         function login() {
             const pass = document.getElementById('passInput').value.toUpperCase();
-            const users = { 'TEAM123': 'admin', 'ARI123': 'Arifin', 'MAU123': 'Maulana', 'RIK123': 'Riki Yolanda', 'AZH123': 'Azhar', 'RIF123': 'Rifky' };
+            const users = { 'TEAM123': 'admin', 'ARI123': 'Arifin', 'WIL123': 'William', 'RIY123': 'Riyanto', 'MAU123': 'Maulana', 'RIK123': 'Riki Yolanda', 'AZH123': 'Azhar', 'RIF123': 'Rifky' };
             if (users[pass]) {
                 currentSales = users[pass];
                 document.getElementById('loginPage').classList.add('hidden');
@@ -133,6 +133,7 @@
 
         async function fetchData() {
             try {
+                // Tambahkan nocache agar data terbaru selalu terambil
                 const url = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/${DATA_FILE}?nocache=${new Date().getTime()}`;
                 const res = await fetch(url);
                 if (res.ok) {
@@ -140,21 +141,36 @@
                     renderTable();
                     updateCustomerDatalist();
                 }
-            } catch (e) { console.error("Error Fetch"); }
+            } catch (e) { console.error("Error Fetch:", e); }
         }
 
         function renderTable() {
+            // Gabungkan keramik dan eksternal. Pastikan data ada atau buat array kosong.
             const data = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const body = document.getElementById('tableBody');
-            body.innerHTML = data.map(item => `
+            
+            if (data.length === 0) {
+                body.innerHTML = '<tr><td colspan="5" class="p-10 text-center italic text-slate-400">Data Kosong. Silahkan Import Excel.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = data.map(item => {
+                // Mengatasi masalah Case-Sensitive pada header Excel (Nama vs nama)
+                const nama = item.Nama || item.nama || '-';
+                const lot = item.Lot || item.lot || '-';
+                const merk = item.Merk || item.merk || '-';
+                const ukuran = item.Ukuran || item.ukuran || '-';
+                const qty = item.QTY || item.qty || 0;
+
+                return `
                 <tr class="border-b">
-                    <td class="p-4 font-bold">${item.Nama || '-'}</td>
-                    <td class="p-4 text-slate-500">${item.Lot || '-'}</td>
-                    <td class="p-4 text-[10px] uppercase">${item.Merk || '-'}</td>
-                    <td class="p-4 text-[10px] text-slate-400">${item.Ukuran || '-'}</td>
-                    <td class="p-4 text-blue-600 font-black">${item.QTY || 0}</td>
+                    <td class="p-4 font-bold">${nama}</td>
+                    <td class="p-4 text-slate-500">${lot}</td>
+                    <td class="p-4 text-[10px] uppercase">${merk}</td>
+                    <td class="p-4 text-[10px] text-slate-400">${ukuran}</td>
+                    <td class="p-4 text-blue-600 font-black">${qty}</td>
                 </tr>
-            `).join('');
+            `}).join('');
             filterData();
         }
 
@@ -168,10 +184,13 @@
                 const cells = row.getElementsByTagName('td');
                 if (cells.length < 5) return;
                 const fullText = row.innerText.toLowerCase();
-                const qty = parseFloat(cells[4].innerText) || 0;
+                const qtyText = cells[4].innerText;
+                const qty = parseFloat(qtyText) || 0;
+                
                 const matchGlobal = fullText.includes(gSearch);
                 const matchName = cells[0].innerText.toLowerCase().includes(nSearch);
                 const matchQty = (qty >= minQ && qty <= maxQ);
+                
                 row.style.display = (matchGlobal && matchName && matchQty) ? "" : "none";
             });
         }
@@ -183,7 +202,10 @@
         function updateCustomerDatalist() {
             const list = document.getElementById('customerList');
             if (masterData.customer) {
-                list.innerHTML = masterData.customer.map(c => `<option value="${c['Nama Toko'] || ''}">`).join('');
+                list.innerHTML = masterData.customer.map(c => {
+                    const namaToko = c['Nama Toko'] || c['nama toko'] || '';
+                    return `<option value="${namaToko}">`;
+                }).join('');
             }
         }
 
@@ -191,7 +213,9 @@
             const container = document.getElementById('orderItems');
             const id = Date.now();
             const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
-            const uniqueNames = [...new Set(allStok.map(s => s.Nama))];
+            // Ambil nama unik dengan support case-insensitive
+            const uniqueNames = [...new Set(allStok.map(s => s.Nama || s.nama))];
+            
             const div = document.createElement('div');
             div.className = "bg-slate-50 p-4 rounded-xl border border-slate-100 relative shadow-sm";
             div.innerHTML = `
@@ -211,8 +235,12 @@
             const row = input.parentElement;
             const lotSelect = row.querySelector('.item-lot');
             const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
-            const filtered = allStok.filter(s => s.Nama === input.value);
-            lotSelect.innerHTML = '<option value="">Pilih Lot</option>' + filtered.map(f => `<option value="${f.Lot}" data-max="${f.QTY}">${f.Lot} (Sisa: ${f.QTY})</option>`).join('');
+            const filtered = allStok.filter(s => (s.Nama || s.nama) === input.value);
+            lotSelect.innerHTML = '<option value="">Pilih Lot</option>' + filtered.map(f => {
+                const lot = f.Lot || f.lot || '-';
+                const qty = f.QTY || f.qty || 0;
+                return `<option value="${lot}" data-max="${qty}">${lot} (Sisa: ${qty})</option>`;
+            }).join('');
         }
 
         function formatCurrency(input) {
@@ -294,7 +322,6 @@
             finally { document.getElementById('sendInfo').classList.add('hidden'); }
         }
 
-        // FUNGSI UPDATE GITHUB (UNTUK IMPORT & HAPUS)
         async function updateGitHub() {
             const token = localStorage.getItem('gh_token');
             if (!token) return alert("Token belum di-set!");
@@ -323,7 +350,8 @@
                 
                 if (putRes.ok) { 
                     alert("✅ BERHASIL UPDATE SERVER!"); 
-                    fetchData(); 
+                    // Tunggu sebentar lalu refresh data lokal
+                    setTimeout(fetchData, 1000);
                 } else {
                     const errRes = await putRes.json();
                     alert("Gagal Update: " + errRes.message);
@@ -346,11 +374,20 @@
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Reset data sebelum import baru
+                masterData.keramik = [];
+                masterData.eksternal = [];
+                masterData.customer = [];
+
                 workbook.SheetNames.forEach(name => {
                     const lowName = name.toLowerCase();
-                    if (lowName.includes('keramik')) masterData.keramik = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
-                    if (lowName.includes('customer')) masterData.customer = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
+                    if (lowName.includes('keramik')) masterData.keramik = jsonData;
+                    if (lowName.includes('eksternal')) masterData.eksternal = jsonData;
+                    if (lowName.includes('customer')) masterData.customer = jsonData;
                 });
+                
                 updateGitHub();
             };
             reader.readAsArrayBuffer(file);
