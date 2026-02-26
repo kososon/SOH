@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SOH Mobile MNU Pekanbaru</title>
+    <title>SOH Mobile - MNU Pekanbaru</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -18,7 +18,7 @@
 
     <div id="loginPage" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH - MNU Pekanbaru</h2>
+            <h2 class="text-4xl font-black text-slate-900 tracking-tighter mb-6">SOH</h2>
             <input type="password" id="passInput" placeholder="Password" class="w-full p-4 border-2 rounded-2xl mb-4 text-center text-xl font-bold bg-slate-50 outline-none focus:border-blue-500">
             <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Login</button>
         </div>
@@ -104,7 +104,6 @@
         const DATA_FILE = "data.json";
         let masterData = { keramik: [], eksternal: [], customer: [] };
 
-        // AUTH & FETCH
         function login() {
             const pass = document.getElementById('passInput').value.toUpperCase();
             const users = { 'TEAM123': 'admin', 'ARI123': 'Arifin', 'MAU123': 'Maulana', 'RIK123': 'Riki Yolanda', 'AZH123': 'Azhar', 'RIF123': 'Rifky' };
@@ -134,7 +133,6 @@
             } catch (e) { console.error("Error Fetch"); }
         }
 
-        // RENDER & FILTER (DIKEMBALIKAN)
         function renderTable() {
             const data = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const body = document.getElementById('tableBody');
@@ -156,28 +154,22 @@
             const minQ = parseFloat(document.getElementById('qtyMin').value) || 0;
             const maxQ = parseFloat(document.getElementById('qtyMax').value) || 999999;
             const rows = document.querySelectorAll('#tableBody tr');
-
             rows.forEach(row => {
                 const cells = row.getElementsByTagName('td');
                 if (cells.length < 5) return;
                 const fullText = row.innerText.toLowerCase();
-                const nameText = cells[0].innerText.toLowerCase();
                 const qty = parseFloat(cells[4].innerText) || 0;
-
                 const matchGlobal = fullText.includes(gSearch);
-                const matchName = nameText.includes(nSearch);
+                const matchName = cells[0].innerText.toLowerCase().includes(nSearch);
                 const matchQty = (qty >= minQ && qty <= maxQ);
-
                 row.style.display = (matchGlobal && matchName && matchQty) ? "" : "none";
             });
         }
 
-        // LISTENERS FILTER
         ['globalSearch', 'searchName', 'qtyMin', 'qtyMax'].forEach(id => {
             document.getElementById(id).addEventListener('input', filterData);
         });
 
-        // ORDER LOGIC
         function updateCustomerDatalist() {
             const list = document.getElementById('customerList');
             if (masterData.customer) {
@@ -211,7 +203,7 @@
             const lotSelect = row.querySelector('.item-lot');
             const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
             const filtered = allStok.filter(s => s.Nama === input.value);
-            lotSelect.innerHTML = '<option value="">Pilih Lot</option>' + filtered.map(f => `<option value="${f.Lot}">${f.Lot} (Sisa: ${f.QTY})</option>`).join('');
+            lotSelect.innerHTML = '<option value="">Pilih Lot</option>' + filtered.map(f => `<option value="${f.Lot}" data-max="${f.QTY}">${f.Lot} (Sisa: ${f.QTY})</option>`).join('');
         }
 
         function formatCurrency(input) {
@@ -220,12 +212,27 @@
             calcTotal();
         }
 
+        // FUNGSI VALIDASI STOK (DIKEMBALIKAN)
         function calcTotal() {
             let totalHarga = 0, totalQty = 0;
             document.querySelectorAll('#orderItems > div').forEach(row => {
-                const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+                const qtyInput = row.querySelector('.item-qty');
+                const lotSelect = row.querySelector('.item-lot');
+                const selectedOption = lotSelect.options[lotSelect.selectedIndex];
+                
+                let qty = parseFloat(qtyInput.value) || 0;
+                const maxStok = selectedOption ? parseFloat(selectedOption.getAttribute('data-max')) : 999999;
+
+                // Validasi: Jika melebihi stok
+                if (qty > maxStok) {
+                    alert(`Stok tidak cukup! Maksimal stok untuk Lot ini adalah ${maxStok}`);
+                    qty = maxStok;
+                    qtyInput.value = maxStok;
+                }
+
                 const price = parseFloat(row.querySelector('.item-price').value.replace(/\./g, "")) || 0;
-                totalQty += qty; totalHarga += (qty * price);
+                totalQty += qty;
+                totalHarga += (qty * price);
             });
             document.getElementById('totalQtyDisplay').innerText = totalQty + " Pcs";
             document.getElementById('totalPriceDisplay').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalHarga);
@@ -246,7 +253,6 @@
             navigator.clipboard.writeText(text); alert("Pesanan Disalin!");
         }
 
-        // IMPORT GITHUB
         document.getElementById('importExcel').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const reader = new FileReader();
