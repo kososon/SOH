@@ -33,8 +33,7 @@
         <div class="flex items-center justify-between mb-3">
             <h1 class="text-2xl font-black text-blue-600 tracking-tighter">SOH</h1>
             <div class="flex items-center gap-2">
-                <div id="adminTools" class="hidden flex gap-2">
-                    <button onclick="clearData()" class="bg-red-600 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase">Hapus Data</button>
+                <div id="adminTools" class="hidden">
                     <label class="bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-black cursor-pointer uppercase">
                         Import Excel
                         <input type="file" id="importExcel" class="hidden" accept=".xlsx, .xls">
@@ -45,7 +44,8 @@
         </div>
         
         <div class="space-y-2">
-            <input type="text" id="globalSearch" placeholder="Cari Merk, Lot, atau Ukuran..." class="w-full px-4 py-2 bg-slate-100 rounded-xl outline-none text-sm font-medium focus:ring-2 focus:ring-blue-500">
+            <input type="text" id="globalSearch" placeholder="Cari Merk atau Lot..." class="w-full px-4 py-2 bg-slate-100 rounded-xl outline-none text-sm font-medium focus:ring-2 focus:ring-blue-500">
+            
             <div class="flex gap-2">
                 <input type="text" id="searchName" placeholder="Nama Barang..." class="flex-1 px-3 py-2 bg-slate-100 rounded-xl outline-none text-[11px] font-bold focus:ring-2 focus:ring-blue-500">
                 <div class="flex items-center gap-1 bg-slate-100 px-2 rounded-xl">
@@ -59,16 +59,16 @@
 
     <main class="flex-1 overflow-y-auto pb-24">
         <section id="homePage" class="p-4">
-            <div id="syncStatus" class="text-[9px] font-bold text-blue-500 mb-2 hidden uppercase text-center">🔄 Sinkronisasi GitHub...</div>
+            <div id="syncStatus" class="text-[9px] font-bold text-blue-500 mb-2 hidden uppercase text-center">🔄 Update Data Otomatis...</div>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-slate-50 border-b">
                         <tr class="text-slate-500 font-black uppercase tracking-tighter">
-                            <th class="p-4">Nama</th><th class="p-4">Lot</th><th class="p-4">Merk</th><th class="p-4">Ukuran</th><th class="p-4">QTY</th>
+                            <th class="p-4">Nama</th><th class="p-4">Lot</th><th class="p-4">Merk</th><th class="p-4">QTY</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody" class="divide-y divide-slate-100 font-bold text-slate-700">
-                        <tr><td colspan="5" class="p-10 text-center italic text-slate-400">Memuat data...</td></tr>
+                        <tr><td colspan="4" class="p-10 text-center italic text-slate-400">Memuat data...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -79,13 +79,38 @@
                 <label class="text-[10px] font-black text-slate-400 uppercase">Pilih Toko</label>
                 <input type="text" id="searchCustomer" list="customerList" placeholder="Nama Toko..." class="w-full p-3 bg-slate-50 rounded-xl mb-4 font-bold border-2 border-slate-100 outline-none focus:border-blue-500">
                 <datalist id="customerList"></datalist>
+                
                 <div id="orderItems" class="space-y-4"></div>
+                
                 <button onclick="addItemRow()" class="mt-4 w-full p-3 border-2 border-dashed border-blue-200 text-blue-600 font-black rounded-xl text-xs uppercase">+ Tambah Item</button>
+                
                 <div class="mt-8 p-5 bg-slate-900 rounded-2xl text-white shadow-xl">
                     <div class="flex justify-between items-end mb-4 px-1">
-                        <div><p class="text-[10px] text-slate-400 uppercase font-black">Total Item</p><p class="text-xl font-black text-blue-400" id="totalQtyDisplay">0 Pcs</p></div>
-                        <div class="text-right"><p class="text-[10px] text-slate-400 uppercase font-black">Total Harga</p><p class="text-xl font-black text-green-400" id="totalPriceDisplay">Rp 0</p></div>
+                        <div class="text-left">
+                            <p class="text-[10px] text-slate-400 uppercase font-black">Total Item</p>
+                            <p class="text-xl font-black text-blue-400" id="totalQtyDisplay">0 Pcs</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-slate-400 uppercase font-black">Total Harga</p>
+                            <p class="text-xl font-black text-green-400" id="totalPriceDisplay">Rp 0</p>
+                        </div>
                     </div>
+                    
+                    <div class="mb-3 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Metode Pengiriman</label>
+                        <select id="shipMethod" class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold outline-none border border-slate-700 focus:border-blue-500 mt-1">
+                            <option value="Antar Toko">Antar Toko</option>
+                            <option value="Antar Alamat">Antar Alamat</option>
+                            <option value="Ambil Sendiri (Amsen)">Ambil Sendiri (Amsen)</option>
+                            <option value="Tunggu Konfirmasi">Tunggu Konfirmasi</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Note (Opsional)</label>
+                        <textarea id="orderNote" rows="2" placeholder="Contoh: Kirim besok pagi..." class="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-medium outline-none border border-slate-700 focus:border-blue-500 mt-1"></textarea>
+                    </div>
+
                     <button onclick="generateOrder()" class="w-full bg-blue-500 py-4 rounded-xl font-black uppercase tracking-tighter active:scale-95 transition-all">Copy Pesanan</button>
                 </div>
             </div>
@@ -93,8 +118,12 @@
     </main>
 
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2 pb-6 z-50">
-        <button onclick="showPage('home')" id="btn-home" class="flex flex-col items-center gap-1 active-nav px-6"><span class="text-xl">🏠</span><span class="text-[10px] font-black uppercase">Stok</span></button>
-        <button onclick="showPage('pesanan')" id="btn-pesanan" class="flex flex-col items-center gap-1 px-6"><span class="text-xl">📝</span><span class="text-[10px] font-black uppercase">Order</span></button>
+        <button onclick="showPage('home')" id="btn-home" class="flex flex-col items-center gap-1 active-nav px-6">
+            <span class="text-xl">🏠</span><span class="text-[10px] font-black uppercase">Stok</span>
+        </button>
+        <button onclick="showPage('pesanan')" id="btn-pesanan" class="flex flex-col items-center gap-1 px-6">
+            <span class="text-xl">📝</span><span class="text-[10px] font-black uppercase">Order</span>
+        </button>
     </nav>
 
     <script>
@@ -105,12 +134,51 @@
 
         let masterData = { keramik: [], eksternal: [], customer: [] };
         let currentUser = null;
-        let GITHUB_TOKEN = "";
 
-        // LOGIN & AUTH
+        function filterData() {
+            const gSearch = document.getElementById('globalSearch').value.toLowerCase();
+            const nSearch = document.getElementById('searchName').value.toLowerCase();
+            const minQ = parseFloat(document.getElementById('qtyMin').value) || 0;
+            const maxQ = parseFloat(document.getElementById('qtyMax').value) || 999999;
+
+            const rows = document.querySelectorAll('#tableBody tr');
+            
+            rows.forEach(row => {
+                const cells = row.getElementsByTagName('td');
+                if (cells.length < 4) return;
+
+                const nama = cells[0].innerText.toLowerCase();
+                const fullText = row.innerText.toLowerCase();
+                const qty = parseFloat(cells[3].innerText) || 0;
+
+                const matchGlobal = fullText.includes(gSearch);
+                const matchName = nama.includes(nSearch);
+                const matchQty = (qty >= minQ && qty <= maxQ);
+
+                if (matchGlobal && matchName && matchQty) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        ['globalSearch', 'searchName', 'qtyMin', 'qtyMax'].forEach(id => {
+            document.getElementById(id).addEventListener('input', filterData);
+        });
+
         function login() {
-            const pass = document.getElementById('passInput').value.toUpperCase();
-            const users = { 'TEAM123': 'admin', 'ARI123': 'Arifin', 'MAU123': 'Maulana', 'RIK123': 'Riki Yolanda', 'AZH123': 'Azhar', 'RIF123': 'Rifky' };
+            const pass = document.getElementById('passInput').value.toUpperCase(); // Case-insensitive
+            
+            // Definisikan Mapping Password ke Nama Sales
+            const users = {
+                'TEAM123': 'admin',
+                'ARI123': 'Arifin',
+                'MAU123': 'Maulana',
+                'RIK123': 'Riki Yolanda',
+                'AZH123': 'Azhar',
+                'RIF123': 'Rifky'
+            };
 
             if (users[pass]) {
                 currentUser = users[pass];
@@ -119,18 +187,20 @@
                 
                 if(currentUser === 'admin') {
                     document.getElementById('adminTools').classList.remove('hidden');
-                    GITHUB_TOKEN = prompt("Masukkan GitHub Personal Access Token untuk Update Data:");
                 }
                 
                 fetchData();
-                setInterval(fetchData, 60000);
-            } else { alert("Password Salah!"); }
+                setInterval(fetchData, 30000);
+            } else { 
+                alert("Password Salah!"); 
+            }
         }
 
         function logout() { location.reload(); }
 
-        // DATA FETCHING & RENDERING
         async function fetchData() {
+            const statusEl = document.getElementById('syncStatus');
+            statusEl.classList.remove('hidden');
             try {
                 const url = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/${DATA_FILE}?nocache=${new Date().getTime()}`;
                 const res = await fetch(url);
@@ -140,6 +210,7 @@
                     updateCustomerDatalist();
                 }
             } catch (e) { console.error("Gagal ambil data"); }
+            finally { setTimeout(() => statusEl.classList.add('hidden'), 1000); }
         }
 
         function renderTable() {
@@ -150,99 +221,10 @@
                     <td class="p-4 font-bold">${item.Nama || '-'}</td>
                     <td class="p-4 text-slate-500">${item.Lot || '-'}</td>
                     <td class="p-4 text-[10px] uppercase">${item.Merk || '-'}</td>
-                    <td class="p-4 text-[10px] text-slate-400">${item.Ukuran || '-'}</td>
                     <td class="p-4 text-blue-600 font-black">${item.QTY || 0}</td>
                 </tr>
             `).join('');
             filterData();
-        }
-
-        function filterData() {
-            const gSearch = document.getElementById('globalSearch').value.toLowerCase();
-            const nSearch = document.getElementById('searchName').value.toLowerCase();
-            const minQ = parseFloat(document.getElementById('qtyMin').value) || 0;
-            const maxQ = parseFloat(document.getElementById('qtyMax').value) || 999999;
-            const rows = document.querySelectorAll('#tableBody tr');
-            
-            rows.forEach(row => {
-                const cells = row.getElementsByTagName('td');
-                if (cells.length < 5) return;
-                const fullText = row.innerText.toLowerCase();
-                const qty = parseFloat(cells[4].innerText) || 0;
-                const matchGlobal = fullText.includes(gSearch);
-                const matchName = cells[0].innerText.toLowerCase().includes(nSearch);
-                const matchQty = (qty >= minQ && qty <= maxQ);
-                row.style.display = (matchGlobal && matchName && matchQty) ? "" : "none";
-            });
-        }
-
-        // GITHUB UPDATE LOGIC
-        async function updateGitHub() {
-            if (!GITHUB_TOKEN) return alert("Token GitHub tidak ada. Harap login ulang.");
-            const statusEl = document.getElementById('syncStatus');
-            statusEl.classList.remove('hidden');
-
-            try {
-                const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
-                const res = await fetch(url);
-                const fileData = await res.json();
-                const sha = fileData.sha;
-
-                const content = btoa(unescape(encodeURIComponent(JSON.stringify(masterData, null, 2))));
-                
-                const updateRes = await fetch(url, {
-                    method: "PUT",
-                    headers: { "Authorization": `token ${GITHUB_TOKEN}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: "Update Data SOH via Web Admin", content: content, sha: sha })
-                });
-
-                if (updateRes.ok) {
-                    alert("✅ Data berhasil diupdate ke GitHub!");
-                    renderTable();
-                } else {
-                    alert("❌ Gagal update GitHub. Cek Token Anda.");
-                }
-            } catch (e) { alert("Error: " + e.message); }
-            finally { statusEl.classList.add('hidden'); }
-        }
-
-        // ADMIN ACTIONS
-        function clearData() {
-            if (confirm("Hapus SEMUA data stok? (Data Customer tetap ada)")) {
-                masterData.keramik = [];
-                masterData.eksternal = [];
-                updateGitHub();
-            }
-        }
-
-        document.getElementById('importExcel').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                
-                workbook.SheetNames.forEach(name => {
-                    const cleanName = name.toLowerCase().replace("data_", "");
-                    if (['keramik', 'eksternal', 'customer'].includes(cleanName)) {
-                        masterData[cleanName] = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
-                    }
-                });
-                updateGitHub();
-            };
-            reader.readAsArrayBuffer(file);
-        });
-
-        // UI HELPERS & OTHERS (Tetap sama)
-        ['globalSearch', 'searchName', 'qtyMin', 'qtyMax'].forEach(id => {
-            document.getElementById(id).addEventListener('input', filterData);
-        });
-
-        function showPage(p) {
-            document.getElementById('homePage').classList.toggle('hidden', p !== 'home');
-            document.getElementById('pesananPage').classList.toggle('hidden', p !== 'pesanan');
-            document.getElementById('btn-home').classList.toggle('active-nav', p === 'home');
-            document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
         }
 
         function updateCustomerDatalist() {
@@ -251,8 +233,137 @@
             list.innerHTML = masterData.customer.map(c => `<option value="${c['nama toko'] || c['Nama Toko'] || ''}">`).join('');
         }
 
-        // Salinan fungsi pendukung (addItemRow, calcTotal, generateOrder, dll tetap sama dengan kode lama Anda)
-        // ... (Tambahkan kembali fungsi order Anda di sini agar fitur Order tetap jalan)
+        function formatCurrency(input) {
+            let val = input.value.replace(/\D/g, "");
+            if (val === "") { input.value = ""; return; }
+            input.value = new Intl.NumberFormat('id-ID').format(val);
+            calcTotal();
+        }
+
+        function validateQty(input) {
+            const row = input.parentElement.parentElement;
+            const namaBarang = row.querySelector('.item-name').value;
+            const lotTerpilih = row.querySelector('.item-lot').value;
+            const qtyInput = parseFloat(input.value) || 0;
+            if (!namaBarang || !lotTerpilih) return;
+            const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
+            const dataBarang = allStok.find(s => s.Nama === namaBarang && s.Lot === lotTerpilih);
+            if (dataBarang) {
+                const stokTersedia = parseFloat(dataBarang.QTY) || 0;
+                if (qtyInput > stokTersedia) {
+                    alert(`⚠️ Stok tidak cukup!\nStok Tersedia: ${stokTersedia}`);
+                    input.value = stokTersedia;
+                }
+            }
+            calcTotal();
+        }
+
+        function addItemRow() {
+            const container = document.getElementById('orderItems');
+            const id = Date.now();
+            const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
+            const uniqueNames = [...new Set(allStok.map(s => s.Nama))];
+            const div = document.createElement('div');
+            div.className = "bg-slate-50 p-4 rounded-xl border border-slate-100 relative";
+            div.innerHTML = `
+                <button onclick="this.parentElement.remove(); calcTotal();" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs font-black">×</button>
+                <input type="text" list="stok-${id}" onchange="updateLotOptions(this)" placeholder="Pilih Item..." class="item-name w-full p-2 rounded-lg border-2 border-white mb-2 font-bold text-sm outline-none">
+                <datalist id="stok-${id}">${uniqueNames.map(n => `<option value="${n}">`).join('')}</datalist>
+                <div class="grid grid-cols-2 gap-2">
+                    <select class="item-lot p-2 rounded-lg border-2 border-white text-xs font-bold outline-none" onchange="validateQty(this.parentElement.querySelector('.item-qty'))">
+                        <option value="">Pilih Lot</option>
+                    </select>
+                    <input type="number" oninput="validateQty(this)" placeholder="QTY" class="item-qty p-2 rounded-lg border-2 border-white text-center font-black text-blue-600 outline-none">
+                </div>
+                <input type="text" oninput="formatCurrency(this)" placeholder="Harga Satuan" class="item-price w-full p-2 rounded-lg border-2 border-white mt-2 font-bold text-sm outline-none">
+            `;
+            container.appendChild(div);
+        }
+
+        function updateLotOptions(input) {
+            const row = input.parentElement;
+            const lotSelect = row.querySelector('.item-lot');
+            const qtyInput = row.querySelector('.item-qty');
+            const allStok = [...(masterData.keramik || []), ...(masterData.eksternal || [])];
+            const filtered = allStok.filter(s => s.Nama === input.value);
+            lotSelect.innerHTML = '<option value="">Pilih Lot</option>' + filtered.map(f => `<option value="${f.Lot}">${f.Lot} (Sisa: ${f.QTY})</option>`).join('');
+            if(qtyInput.value) validateQty(qtyInput);
+        }
+
+        function calcTotal() {
+            let totalHarga = 0;
+            let totalQty = 0;
+            document.querySelectorAll('#orderItems > div').forEach(row => {
+                const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+                const priceRaw = row.querySelector('.item-price').value.replace(/\./g, "");
+                const price = parseFloat(priceRaw) || 0;
+                totalQty += qty;
+                totalHarga += (qty * price);
+            });
+            document.getElementById('totalQtyDisplay').innerText = totalQty + " Pcs";
+            document.getElementById('totalPriceDisplay').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalHarga);
+        }
+
+        async function generateOrder() {
+            const customer = document.getElementById('searchCustomer').value;
+            const shipMethod = document.getElementById('shipMethod').value;
+            const note = document.getElementById('orderNote').value.trim();
+            if(!customer) return alert("Pilih Toko dulu!");
+            
+            let text = `Pesanan via Whatsapp Toko : *${customer}*\n`;
+            text += `---------------\n`;
+            text += `*Motif / Lot / QTY / Harga*\n`;
+            
+            let itemsReport = ""; 
+            
+            document.querySelectorAll('#orderItems > div').forEach(row => {
+                const motif = row.querySelector('.item-name').value;
+                const lot = row.querySelector('.item-lot').value;
+                const qty = row.querySelector('.item-qty').value;
+                const harga = row.querySelector('.item-price').value;
+                
+                if(motif && qty) {
+                    text += `${motif} / ${lot} / ${qty} / Rp ${harga}\n`;
+                    itemsReport += `${motif} (L:${lot})[${qty}]; `; 
+                }
+            });
+            
+            const totalQty = document.getElementById('totalQtyDisplay').innerText;
+            const totalHarga = document.getElementById('totalPriceDisplay').innerText;
+            const now = new Date();
+            const timestamp = now.toLocaleString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':');
+
+            text += `---------------\n`;
+            text += `*Total Qty : ${totalQty}*\n`;
+            text += `*Total Pesanan : ${totalHarga}*\n`;
+            text += `Metode : ${shipMethod}\n`;
+            if(note !== "") text += `Note : ${note}\n`;
+            text += `\nPekanbaru , ${timestamp}`;
+            
+            navigator.clipboard.writeText(text);
+            alert("Pesanan disalin! Mengirim laporan...");
+
+            try {
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        sales: currentUser, // Nilai ini sekarang berisi nama Sales asli (Arifin/Maulana/dst)
+                        customer: customer,
+                        items: itemsReport + (note ? " | Note: " + note : ""),
+                        total: totalHarga + " (" + totalQty + ") [" + shipMethod + "]"
+                    })
+                });
+            } catch (e) { console.error("Gagal lapor:", e); }
+        }
+
+        function showPage(p) {
+            document.getElementById('homePage').classList.toggle('hidden', p !== 'home');
+            document.getElementById('pesananPage').classList.toggle('hidden', p !== 'pesanan');
+            document.getElementById('btn-home').classList.toggle('active-nav', p === 'home');
+            document.getElementById('btn-pesanan').classList.toggle('active-nav', p === 'pesanan');
+        }
     </script>
 </body>
 </html>
